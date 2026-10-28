@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.2.1 (2026.10.29)';
+const APP_VERSION = 'v0.3.1 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -21,14 +21,15 @@ const $ = s => document.querySelector(s);
 const topEl = $('#top'), cv = $('#cv'), ov = $('#ov'), pad = $('#pad'), uiRoot = $('#ui');
 const ctx = cv.getContext('2d');
 let W = 300, S = 2, DPR = 1;
-let LAND = false;
+let LAND = false, fitKey = '';
 function fit() {
   const app = $('#app'); DPR = window.devicePixelRatio || 1;
+  fitKey = app.clientWidth + 'x' + app.clientHeight + '@' + DPR;
   LAND = app.clientWidth > app.clientHeight;
   if (LAND) {
     const cssW = app.clientWidth, cssH = app.clientHeight;
-    S = Math.max(1, Math.round(cssH * DPR / H)); if (H * S / DPR > cssH * 1.1) S = Math.max(1, S - 1);
-    W = Math.max(260, Math.floor(cssW * DPR / S));
+    S = cssH * DPR / H;                         // 화면 높이에 딱 맞춤 (가로 화면)
+    W = Math.max(260, Math.ceil(cssW * DPR / S));
   } else {
     const cssW = Math.min(app.clientWidth, 560);
     S = Math.max(1, Math.round(cssW * DPR / 300));
@@ -41,7 +42,7 @@ function fit() {
 }
 window.addEventListener('resize', () => { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; });
 /* 가로 화면에서 오른쪽 패널에 가리지 않는 가운데 */
-const viewCX = () => LAND && pad.innerHTML && !/pad-(run|title)/.test(pad.className) ? Math.round(W * .28) : Math.round(W / 2);
+const viewCX = () => LAND && pad.innerHTML && !/pad-(run|title)/.test(pad.className) ? Math.round(W * .31) : Math.round(W / 2);
 $('#rotOK').onclick = () => { document.body.classList.add('portraitOK'); };
 const gx = x => x * S / DPR;            // 게임 픽셀 → 화면(css) 픽셀
 
@@ -239,7 +240,7 @@ async function openCase(no) {
   await wait(c);
   await say([{ who: 'teacher', t: STORY.depart[no] }]);
   // 도착 장면 + 친구 대화 (교재 미니 대화)
-  go('arrive'); Sound.bgm('map'); arriveT = performance.now();
+  go('arrive'); Sound.bgm('talk'); arriveT = performance.now();
   const f = cur.friend;
   await sleep(Math.max(900, (viewCX() + 20) * 14 + 200));
   for (const [zh, py, ko, who] of cur.intro) await say([{ who: who === 'me' ? 'minhao' : f.name, look: f.look, zh: [zh, py, ko] }], who === 'me' ? {} : { who: [`${f.name} (${f.ko})`, f.look] });
@@ -322,8 +323,8 @@ function buildLevel(cs, boss) {
   return objs.sort((a, b) => a.x - b.x);
 }
 function startRun(cs, boss = false) {
-  go('run'); Sound.bgm('chat');
-  const key = boss ? 'hq' : cs.theme;
+  go('run');
+  const key = boss ? 'hq' : cs.theme; Sound.bgm(key);
   skyC = null; drawScene(key, 0); THEME.key = key; THEME.roll = ART.roller(key); THEME.tall = ART.tall(THEME.col);
   { const d = THEME.ground.getContext('2d').getImageData(4, THEME.ground.height - 2, 1, 1).data; THEME.soil = `rgb(${d[0] * .72 | 0},${d[1] * .68 | 0},${d[2] * .7 | 0})`; THEME.soilD = `rgb(${d[0] * .55 | 0},${d[1] * .5 | 0},${d[2] * .55 | 0})`; }
   R = { cs, boss, dist: 0, speed: 82, objs: [], y: 0, vy: 0, ground: true, jumps: 0, slide: 0, hearts: 3, inv: 0, bike: 0, got: [], gates: [], fx: [], paused: false, t: 0, done: false, gateNow: null, slowK: 1, hurtT: 0, snow: [], terr: [[0, 0], [1, 0]], pits: [] };
@@ -352,10 +353,10 @@ function updRunHud() {
 const footX = () => R.dist + PLAYER_X + 11;
 function doJump() {
   if (!R || R.paused || R.done) return;
-  if (R.ground) { R.vy = JUMP; R.ground = false; R.jumps = 1; R.slide = 0; Sound.sfx('blip'); }
-  else if (R.jumps === 1) { R.vy = JUMP2; R.jumps = 2; Sound.sfx('pop'); puff(PLAYER_X + 8, GY - R.y, '#ffffff'); }
+  if (R.ground) { R.vy = JUMP; R.ground = false; R.jumps = 1; R.slide = 0; Sound.sfx('jump'); }
+  else if (R.jumps === 1) { R.vy = JUMP2; R.jumps = 2; Sound.sfx('jump2'); puff(PLAYER_X + 8, GY - R.y, '#ffffff'); }
 }
-function doSlide(on) { if (!R || R.paused) return; if (on && R.ground) { R.slide = .6; Sound.sfx('wind'); } else if (on && !R.ground) R.vy = -320; }
+function doSlide(on) { if (!R || R.paused) return; if (on && R.ground) { R.slide = .6; Sound.sfx('slide'); } else if (on && !R.ground) R.vy = -320; }
 let swipe = null;
 function runPointer(e, k) {
   if (k === 'down') { swipe = { y: e.clientY, t: performance.now(), done: false }; return; }
@@ -376,7 +377,7 @@ function pauseRun() {
 }
 function hurt() {
   if (R.inv > 0) return false;
-  R.hearts--; R.inv = 1.3; R.hurtT = .5; Sound.sfx('bad'); puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
+  R.hearts--; R.inv = 1.3; R.hurtT = .5; Sound.sfx('hurt'); puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
   if (R.hearts <= 0) { failRun(); return true; } return false;
 }
 function updateRun(dt) {
@@ -396,9 +397,9 @@ function updateRun(dt) {
   }
   if (!R.ground) {
     R.vy -= GRAV * dt; R.y += R.vy * dt;
-    if (!pit && R.y <= G && R.vy <= 0) { R.y = G; R.vy = 0; R.ground = true; R.jumps = 0; puff(PLAYER_X + 8, GY - G, '#d8c8b8'); }
+    if (!pit && R.y <= G && R.vy <= 0) { if (R.vy < -120) Sound.sfx('land'); R.y = G; R.vy = 0; R.ground = true; R.jumps = 0; puff(PLAYER_X + 8, GY - G, '#d8c8b8'); }
     if (pit && R.y < gh(pit.x) - 20) {          // 구멍에 빠짐 → 하트 -1, 판자를 깔고 튀어 오름
-      pit.filled = true; R.vy = 300; R.jumps = 2; toast('앗! 구멍은 점프로 넘어요');
+      pit.filled = true; R.vy = 300; R.jumps = 2; Sound.sfx('pit'); toast('앗! 구멍은 점프로 넘어요');
       if (hurt()) return;
     }
   }
@@ -419,7 +420,7 @@ function updateRun(dt) {
       else if (o.bird) { const by = birdY(o); hit = rel < by + o.h - 1 && rel + ph > by + 1; }
       else hit = rel < o.h - 4;
       if (hit) {
-        if (R.bike > 0) { o.gone = true; puff(sx + o.w / 2, GY - base - o.h / 2, '#ffe08a'); Sound.sfx('stamp'); continue; }
+        if (R.bike > 0) { o.gone = true; puff(sx + o.w / 2, GY - base - o.h / 2, '#ffe08a'); Sound.sfx('smash'); continue; }
         if (hurt()) return;
       }
     } else if (o.k === 'clue') {
@@ -428,7 +429,7 @@ function updateRun(dt) {
       if (cx > px0 - 6 && cx < px1 + 6 && Math.abs(cy - py) < ph / 2 + 10) { o.gone = true; collectClue(o); }
     } else if (o.k === 'bike') {
       const by = GY - gh(o.x) - o.hy;
-      if (sx + 20 > px0 && sx < px1 && GY - R.y - ph < by + 14 && GY - R.y > by) { o.gone = true; R.bike = 6; Sound.sfx('good'); bikeCard(); }
+      if (sx + 20 > px0 && sx < px1 && GY - R.y - ph < by + 14 && GY - R.y > by) { o.gone = true; R.bike = 6; Sound.sfx('bike'); bikeCard(); }
     } else if (o.k === 'gate') {
       if (!o.passed && sx + 15 < PLAYER_X + 11) passGate(o);
     } else if (o.k === 'goal' && sx < PLAYER_X) { R.done = true; return finishRun(); }
@@ -439,7 +440,7 @@ function updateRun(dt) {
 const birdY = o => 12 + 12 * (1 + Math.sin(R.t * 2.6 + o.ph));
 function collectClue(o) {
   const c = R.cs.clues[o.ci]; R.got.push(o.ci); delete save.weakClue[R.cs.no + ':' + o.ci]; persist();
-  Sound.sfx('sel'); speak(c[0]); puff(PLAYER_X + 12, GY - R.y - 20, '#ffe08a');
+  Sound.sfx('clue'); speak(c[0]); puff(PLAYER_X + 12, GY - R.y - 20, '#ffe08a');
   msg(`🔍 <b>${esc(c[0])}</b>${set.py ? ` <span>${esc(c[1])}</span>` : ''}${set.ko ? ` · ${esc(c[2])}` : ''}${c[3] ? ` <i>HSK${c[3]}</i>` : ''}`, 'clue', 1700);
   updRunHud();
 }
@@ -477,19 +478,19 @@ function showGate(o) {
   const g = o.gate;
   if (!o.opts) { o.opts = shuffle([g.ans, g.wrong[0]]); o.locked = []; o.hint = -1; }
   if (gq) { gq.className = 'on'; gq.innerHTML = g.quiz ? `<span class="zh">${esc(g.q)}</span>${set.ko ? ` <small>${esc(g.ko)}</small>` : ''}` : `🚪 ${esc(g.ko)} <span class="zh">${esc(g.stem)}</span>`; }
-  speak(g.quiz ? g.q : g.stem.replace(/＿+/, '什么'));
+  Sound.sfx('gate'); speak(g.quiz ? g.q : g.stem.replace(/＿+/, '什么'));
   o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab ${i ? 'dn' : 'up'}${o.locked.includes(i) ? ' x' : ''}">${i ? '⤓' : '⤒'} ${esc(t)}</div>`); ov.appendChild(d); return d; });
   setOptBtns(o);
 }
 function passGate(o) {
   const pickI = !R.ground ? 0 : R.slide > 0 ? 1 : -1, g = o.gate;
   const full = g.quiz ? g.ans : g.stem.replace(/＿+/, g.ans);
-  const bump = () => { Sound.sfx('bad'); R.dist -= 64; R.vy = 140; R.ground = false; R.jumps = 2; R.slide = 0; R.hurtT = .45; R.slowK = .3; puff(PLAYER_X + 18, GY - R.y - 15, '#ff8a7a'); };
+  const bump = () => { Sound.sfx('lock'); R.dist -= 64; R.vy = 140; R.ground = false; R.jumps = 2; R.slide = 0; R.hurtT = .45; R.slowK = .3; puff(PLAYER_X + 18, GY - R.y - 15, '#ff8a7a'); };
   if (pickI < 0) { bump(); flash('⤒ 점프 또는 ⤓ 미끄러지기로 골라요!', '', 'no'); return; }
   if (o.opts[pickI] === g.ans) {
     o.passed = true;
     R.gates.push({ g, ok: !o.failed, first: true });
-    Sound.sfx('good'); puff(PLAYER_X + 12, GY - R.y - 20, '#7fd6a8'); speak(full);
+    Sound.sfx('open'); puff(PLAYER_X + 12, GY - R.y - 20, '#7fd6a8'); speak(full);
     if (!g.quiz && !o.failed) delete save.weakGate[R.cs.no + ':' + o.gi];
     flash(`⭕ ${full}`, g.py, 'ok'); persist();
     R.gateNow = null; showGate(null);
@@ -502,7 +503,7 @@ function passGate(o) {
   setOptBtns(o);
 }
 async function failRun() {
-  R.done = true; Sound.sfx('bad');
+  R.done = true; Sound.sfx('hurt'); Sound.bgm('fail');
   const c = card(`<h2>😵 앗, 넘어졌어요!</h2><div class="small">괜찮아요! 다시 달리면 돼요. 모은 단서 ${R.got.length}개는 기억해 둘게요.</div><div class="row"><button class="big go">🔁 다시 달리기</button></div><div class="row"><button class="btn mp">지도로</button></div>`);
   c.querySelector('.mp').onclick = () => { c.close(); mapScreen(); };
   await wait(c); startRun(R.cs, R.boss);
@@ -567,7 +568,7 @@ function finishRun() {
   startLadder(R.cs, R);
 }
 function startLadder(cs, run) {
-  go('ladder'); Sound.bgm('chat');
+  go('ladder'); Sound.bgm('ladder');
   LD = { cs, run, step: 0, y: 0, ty: 0, anim: 0, tuk: 0, miss: 0, cheer: 0 };
   ladderPad(true);
   LD.scene = ART.towerScene(cs.theme, W, viewCX());
@@ -591,15 +592,15 @@ async function tapTile(b) {
   if (LD.done || b.classList.contains('used')) return;
   const st = LD.cs.ladder[LD.step], need = st.t[LD.pos];
   if (b.dataset.t === need) {
-    b.classList.add('used'); Sound.sfx('sel');
+    b.classList.add('used'); Sound.sfx('tile');
     const sl = pad.querySelectorAll('.slot')[LD.pos]; sl.textContent = need; sl.classList.add('on');
     pad.querySelectorAll('.tile.hint').forEach(x => x.classList.remove('hint'));
     LD.pos++;
     if (LD.pos < st.t.length) return;
     LD.done = true;
     const sec = (performance.now() - LD.t0) / 1000, ans = st.t.join('');
-    Sound.sfx('good'); speak(ans);
-    if (LD.stepMiss === 0 && sec < LD.limit) { LD.tuk++; floatPad('툭! ⚡'); }
+    Sound.sfx('climb'); speak(ans);
+    if (LD.stepMiss === 0 && sec < LD.limit) { LD.tuk++; floatPad('툭! ⚡'); Sound.sfx('tuk'); }
     LD.ty = LD.step + 1; LD.anim = 1;
     await sleep(1100);
     LD.step++;
@@ -630,13 +631,103 @@ function drawLadder(t) {
   if (LD.cheer) for (let i = 0; i < 12; i++) { const a = t / 300 + i; PX.R(ctx, W / 2 + Math.cos(a) * (20 + i * 3), 40 + Math.sin(a * 1.3) * 20 + i * 2, 2, 2, ['#e2504c', '#ffd36e', '#7fd6a8', '#7fb2ec'][i % 4]); }
 }
 async function ladderTop() {
-  LD.cheer = 1; Sound.bgm('win');
+  LD.cheer = 1; Sound.bgm('win'); Sound.sfx('cheer');
   const last = LD.cs.ladder[5].t.join('');
   pad.innerHTML = `<div class="panel center"><div class="ptitle">🏆 꼭대기에서 사건의 진실을 외쳐요!</div>${zhBlock(last, '', LD.cs.ladder[5].ko)}<button class="big go">🔊 다 같이 외치기</button></div>`;
   speak(last);
   await new Promise(res => pad.querySelector('.go').onclick = () => { speak(last); res(); });
   await sleep(600);
+  if (CHECK[LD.cs.no]) startCheck(LD.cs); else caseSolved();
+}
+
+/* ───────── 🛂 검문소: 통행증 검사 (페이퍼즈 플리즈 느낌) ───────── */
+let CK = null;
+async function startCheck(cs) {
+  go('check'); Sound.bgm('check');
+  const data = CHECK[cs.no];
+  CK = { cs, data, i: -1, ok: 0, warn: 0, walk: 0, out: 0, outDir: 1, bg: null };
+  { const th = ART.THEMES[cs.theme](), [c, g] = PX.mk(W, H); th.sky(g); g.drawImage(th.layers[0].c, 0, 0); if (th.layers[1]) g.drawImage(th.layers[1].c, 0, 0); CK.bg = c; }
+  await say([{ who: 'minhao', t: '마지막은 검문소야! 미스터리 클럽 멤버가 사람들 사이에 숨어 있대.' },
+    { who: 'minhao', t: '📒 수첩의 규칙과 🪪 통행증을 꼼꼼히 비교하고, 말하는 것도 잘 들어 봐. 맞으면 通过(통과), 이상하면 可疑(수상해요) 도장!' }]);
+  nextSuspect();
+}
+function nextSuspect() {
+  CK.i++;
+  if (CK.i >= CK.data.people.length) return checkEnd();
+  const p = CK.data.people[CK.i], rules = CK.data.rules.filter(r => r[3] <= CK.i), fresh = CK.data.rules.filter(r => r[3] === CK.i);
+  CK.walk = performance.now(); CK.out = 0; CK.done = false; [0, 180, 360].forEach(d => setTimeout(() => Sound.sfx('step'), d));
+  const docRows = Object.entries(p.doc).map(([k, v]) => { const [zh, ko] = v.split('|'); return `<div class="drow"><span>${esc(k)}<small>${esc(DOC_FIELD[k] || '')}</small></span><b>${esc(zh)}${set.ko ? `<small>${esc(ko)}</small>` : ''}</b></div>`; }).join('');
+  pad.innerHTML = `<div class="panel ck">
+    <div class="ptitle">🛂 검문소 ${CK.i + 1} / ${CK.data.people.length} <span class="small">⚠ 경고 ${CK.warn}</span></div>
+    <div class="rulebook"><div class="rh">📒 오늘의 규칙</div>${rules.map(r => `<div class="rule ${fresh.includes(r) ? 'new' : ''}" data-say="${esc(r[0])}">${fresh.includes(r) ? '<em>NEW</em>' : '•'} <span class="zh">${esc(r[0])}</span>${set.py ? `<small class="py">${esc(r[1])}</small>` : ''}${set.ko ? `<small>${esc(r[2])}</small>` : ''}</div>`).join('')}</div>
+    <div class="pass"><div class="ph">🪪 通行证 · 통행증</div><div class="drow"><span>姓名<small>이름</small></span><b>${esc(p.n)}</b></div>${docRows}<div class="stampmark"></div></div>
+    <div class="talk" data-say="${esc(p.say[0])}">💬 <span class="zh">${esc(p.say[0])}</span> 🔊${set.py ? `<small class="py">${esc(p.say[1])}</small>` : ''}${set.ko ? `<small>${esc(p.say[2])}</small>` : ''}</div>
+    <div class="stamps"><button class="stamp ok" data-v="1">✅ 通过<small>통과</small></button><button class="stamp no" data-v="0">🚨 可疑<small>수상해요</small></button></div>
+    <div class="verdict"></div></div>`;
+  pad.querySelectorAll('[data-say]').forEach(d => d.onclick = () => speak(d.dataset.say));
+  pad.querySelectorAll('.stamp').forEach(b => b.onclick = () => judge(+b.dataset.v));
+  pad.scrollTop = 0;
+  if (fresh.length && CK.i > 0) { Sound.sfx('rule'); toast('📒 새 규칙이 생겼어요!'); }
+  setTimeout(() => { if (CK && !CK.done) { speak(p.say[0]); SPEAK = { look: p.look, mood: /[！!]/.test(p.say[0]) ? 'happy' : 'ok', emo: /[？?]/.test(p.say[0]) ? '?' : /[！!]/.test(p.say[0]) ? '!' : '', t0: performance.now(), dur: 900 + p.say[0].length * 110 }; } }, 800);
+}
+async function judge(v) {
+  if (CK.done) return; CK.done = true;
+  const p = CK.data.people[CK.i], right = (v === 1) === !!p.ok;
+  const sm = pad.querySelector('.stampmark'); sm.className = 'stampmark on ' + (v ? 'ok' : 'no'); sm.textContent = v ? '通过' : '可疑';
+  pad.querySelectorAll('.stamp').forEach(b => b.disabled = true);
+  Sound.sfx('stamp');
+  const vd = pad.querySelector('.verdict');
+  if (right) { CK.ok++; await sleep(250); Sound.sfx('good'); vd.className = 'verdict good'; vd.innerHTML = `⭕ 정확해요! ${esc(p.why)}`; }
+  else { CK.warn++; await sleep(250); Sound.sfx('warn'); vd.className = 'verdict bad'; vd.innerHTML = `<b>⚠ 경고장!</b> ${p.ok ? '이 사람은 통과해도 돼요.' : '이 사람은 수상해요!'} ${esc(p.why)}`; }
+  if (CK.i === CK.data.people.length - 1 && !p.ok) { if (right) Sound.sfx('caught'); SPEAK = { look: 'club', mood: right ? 'surprise' : 'happy', emo: right ? '!' : '♪', t0: performance.now(), dur: 900 }; }
+  vd.insertAdjacentHTML('beforeend', '<div class="row"><button class="big go">다음 ▶</button></div>');
+  vd.scrollIntoView({ block: 'nearest' });
+  await new Promise(res => { const b = vd.querySelector('.go'); b.onclick = res; enterHook = res; });
+  enterHook = null; CK.out = performance.now(); CK.outDir = v ? -1 : 1; SPEAK = null;
+  await sleep(500);
+  nextSuspect();
+}
+async function checkEnd() {
+  pad.innerHTML = ''; CK.i = CK.data.people.length;
+  const caught = CK.data.people[CK.data.people.length - 1];
+  await say([{ who: 'minhao', t: CK.ok >= 4 ? `검문소 완벽해! ${CK.ok}/5 정확! 변장한 미스터리 클럽 멤버도 찾아냈어.` : `검문소 ${CK.ok}/5. 경고장 ${CK.warn}장… 그래도 미스터리 클럽 멤버의 정체는 밝혀졌어!` },
+    { who: 'club', look: 'club', zh: ['哎呀，被你发现了！你们真厉害！', 'Āiyā, bèi nǐ fāxiàn le! Nǐmen zhēn lìhai!', '아이고, 들켰다! 너희 정말 대단한걸!'] }], { });
   caseSolved();
+}
+function drawCheck(t) {
+  if (!CK || !CK.bg) return;
+  const cx = viewCX(), wx0 = cx - 78, wx1 = cx + 78;
+  PX.R(ctx, 0, 0, W, H, '#4a3a52');
+  for (let y = 0; y < 150; y += 10) for (let x = (y / 10 % 2) * 10; x < W; x += 20) PX.R(ctx, x, y, 10, 10, '#52425a');
+  // 창문 너머 도시
+  ctx.save(); ctx.beginPath(); ctx.rect(wx0, 26, wx1 - wx0, 124); ctx.clip(); ctx.drawImage(CK.bg, Math.round(cx - W / 2), -20); ctx.restore();
+  // 사람
+  const p = CK.data.people[CK.i];
+  if (p) {
+    const el2 = t - CK.walk, outT = CK.out ? t - CK.out : 0;
+    let x = cx - 26 + Math.max(0, 1 - el2 / 700) * 120 + (CK.out ? CK.outDir * outT / 3 : 0);
+    const moving = el2 < 700 || CK.out;
+    let im = moving ? PX.person(p.look, 'run', Math.floor(t / 90) % 6) : null;
+    if (!moving) { const sp = SPEAK && SPEAK.look === p.look ? SPEAK : null, e = sp ? t - sp.t0 : 9e9; const f = Math.floor(t / 150) % 2;
+      im = sp && e < sp.dur ? PX.person(p.look, 'talk', f, (f ? 'talk' : '') + sp.mood) : PX.person(p.look, 'stand', 0, (t % 3200) < 120 ? 'blink' : (sp ? sp.mood : undefined)); }
+    if (moving && (el2 < 700 || CK.outDir < 0)) im = PX.flip(im);
+    if (!moving) im = PX.flip(im);
+    ctx.drawImage(im, Math.round(x), 150 - 58, im.width * 2, im.height * 2);
+    if (SPEAK && SPEAK.look === p.look && SPEAK.emo && t - SPEAK.t0 < 1500) { const bx = Math.round(x + 10), by = 72; PX.R(ctx, bx, by, 13, 12, '#1d1424'); PX.R(ctx, bx + 1, by + 1, 11, 10, '#fff'); PX.text(ctx, SPEAK.emo, bx + 4, by + 1, 9, SPEAK.emo === '!' ? '#e2504c' : '#4f7fdc'); }
+  }
+  // 창틀 · 간판
+  PX.R(ctx, wx0 - 6, 20, wx1 - wx0 + 12, 6, '#2a1d24'); PX.R(ctx, wx0 - 6, 20, 6, 132, '#2a1d24'); PX.R(ctx, wx1, 20, 6, 132, '#2a1d24');
+  PX.R(ctx, wx0, 26, 3, 124, '#ffffff22');
+  PX.R(ctx, cx - 30, 4, 60, 15, '#c0392b'); PX.R(ctx, cx - 29, 5, 58, 1, '#f2c14e'); PX.text(ctx, '检查站', cx - 20, 4, 11, '#ffe9a8');
+  // 책상
+  PX.R(ctx, 0, 150, W, 50, '#7a4a30'); PX.R(ctx, 0, 150, W, 3, '#a8744e'); PX.R(ctx, 0, 153, W, 1, '#5a3420');
+  for (let x = 0; x < W; x += 24) PX.R(ctx, x, 160, 1, 40, '#6a4028');
+  PX.R(ctx, cx - 50, 162, 34, 24, '#fff6dc'); PX.R(ctx, cx - 50, 162, 34, 3, '#e2504c'); for (let k = 0; k < 4; k++) PX.R(ctx, cx - 46, 168 + k * 4, 22 - (k % 2) * 6, 1, '#b0a090');
+  PX.R(ctx, cx + 18, 166, 20, 10, '#2a1d24'); PX.R(ctx, cx + 19, 167, 18, 8, '#c0392b');
+  PX.R(ctx, cx + 44, 160, 8, 12, '#8a5a30'); PX.R(ctx, cx + 42, 172, 12, 4, '#2a1d24');
+  // 民浩 (책상 옆)
+  const mf = SPEAK && SPEAK.look === 'minhao' ? Math.floor(t / 150) % 2 : 0;
+  ctx.drawImage(PX.person('minhao', mf ? 'talk' : 'stand', mf, mf ? 'talk' : undefined), Math.max(4, wx0 - 40), 150 - PX.SH + 1 + 10);
 }
 
 /* ───────── 사건 해결 · 과제 확인증 ───────── */
@@ -647,12 +738,13 @@ async function caseSolved() {
   await say([{ zh: STORY.solved[cs.no], look: f.look }], { who: [`${f.name} (${f.ko})`, f.look] });
   const gatesFirst = run.gates.filter(g => g.first);
   const gateOk = gatesFirst.filter(g => g.ok).length;
-  let stars = 1; if (run.hearts >= 2) stars++; if (gateOk >= gatesFirst.length - 1 && LD.tuk >= 3) stars++;
+  const ck = CK && CK.cs === cs ? CK : { ok: 5, warn: 0 };
+  let stars = 1; if (run.hearts >= 2) stars++; if (gateOk >= gatesFirst.length - 1 && LD.tuk >= 3 && ck.ok >= 4) stars++;
   const prev = save.cleared[cs.no] || 0; save.cleared[cs.no] = Math.max(prev, stars);
   const missed = cs.clues.map((c, i) => i).filter(i => !run.got.includes(i));
   missed.forEach(i => save.weakClue[cs.no + ':' + i] = 1);
   const now = new Date(); const date = `${now.getMonth() + 1}월 ${now.getDate()}일 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  save.history.push({ no: cs.no, stars, date, clues: run.got.length, gates: `${gateOk}/${gatesFirst.length}`, tuk: LD.tuk }); persist();
+  save.history.push({ no: cs.no, stars, date, clues: run.got.length, gates: `${gateOk}/${gatesFirst.length}`, tuk: LD.tuk, check: ck.ok }); persist();
   Sound.sfx('stamp');
   // 1) 교재 미션
   const m = card(`<h2>🎤 사건 해결 미션 · ${esc(cs.mission.title)}</h2><div class="small">교재 ${cs.no}과 5쪽 미션이에요. 빈칸에 내 말을 넣어 소리 내어 3번 말해 보세요. (녹음은 저장되지 않아요)</div>
@@ -668,7 +760,7 @@ async function caseSolved() {
     <div class="stars">${'★'.repeat(stars)}<span>${'☆'.repeat(3 - stars)}</span></div>
     <div class="crow"><span>탐정</span><b>${esc(save.name)}</b></div><div class="crow"><span>날짜</span><b>${esc(date)}</b></div>
     <div class="crow"><span>단서</span><b>${run.got.length} / 10</b></div><div class="crow"><span>덩어리 관문 (한 번에)</span><b>${gateOk} / ${gatesFirst.length}</b></div>
-    <div class="crow"><span>사다리 툭! (실수 없이 빠르게)</span><b>${LD.tuk} / 6</b></div><div class="crow"><span>남은 하트</span><b>${'❤'.repeat(run.hearts)}</b></div>
+    <div class="crow"><span>사다리 툭! (실수 없이 빠르게)</span><b>${LD.tuk} / 6</b></div><div class="crow"><span>🛂 검문소 정확</span><b>${ck.ok} / 5 · 경고 ${ck.warn}</b></div><div class="crow"><span>남은 하트</span><b>${'❤'.repeat(run.hearts)}</b></div>
     ${wc.length || wg.length ? `<div class="weak">🃏 오답 카드 (다음 판에 먼저 나와요): ${wc.map(x => `<span data-say="${esc(x[0])}">${esc(x[0])}</span>`).join(' ')} ${wg.map(g => `<span data-say="${esc(g.stem.replace(/＿+/, g.ans))}">${esc(g.stem.replace(/＿+/, g.ans))}</span>`).join(' ')}</div>` : '<div class="good">👏 오답 카드 없음!</div>'}
     <div class="small">이 화면을 캡처해서 선생님께 보내 주세요. 별 3개가 안 나오면 다시 도전해도 좋아요!</div></div>
     <div class="row"><button class="big go">🗺 지도로</button><button class="btn again">🔁 다시 도전</button></div>`, 'certcard');
@@ -735,6 +827,7 @@ function openMenu() {
 /* ───────── 매 프레임 ───────── */
 let last = performance.now();
 function loop(now) {
+  { const a = document.getElementById('app'); if (a.clientWidth + 'x' + a.clientHeight + '@' + (window.devicePixelRatio || 1) !== fitKey) { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; } }
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (screen === 'title') { titleT += dt; if (!THEME || THEME.name !== '重庆') { THEME = ART.THEMES.cq(); skyC = null; } drawTitle(now, titleT * 60); }
   else if (screen === 'map') drawMap(now);
@@ -742,6 +835,7 @@ function loop(now) {
   else if (screen === 'intro' || screen === 'arrive' || screen === 'solved') drawScene(cur.theme, now, screen === 'intro' ? [] : arriveCast(now));
   else if (screen === 'run' && R) { updateRun(dt); if (R) drawRun(now); }
   else if (screen === 'ladder' && LD) { updateLadder(dt); drawLadder(now); }
+  else if (screen === 'check') drawCheck(now);
   requestAnimationFrame(loop);
 }
 function drawTitle(t, dist) {
@@ -756,5 +850,5 @@ function drawTitle(t, dist) {
 
 /* 카카오톡 등 앱 안 브라우저 안내 */
 if (/KAKAOTALK|Instagram|FBAN|FBAV|NAVER\(inapp/i.test(navigator.userAgent || '')) setTimeout(() => toast('소리가 안 나면 크롬·사파리에서 열어 주세요'), 1500);
-window.__cr = { get save() { return save; }, get R() { return R; }, get LD() { return LD; }, get screen() { return screen; }, openCase, startRun, startLadder, mapScreen, doJump, doSlide, meeting };
+window.__cr = { get save() { return save; }, get R() { return R; }, get LD() { return LD; }, get screen() { return screen; }, openCase, startRun, startLadder, startCheck, get CK() { return CK; }, mapScreen, doJump, doSlide, meeting };
 fit(); titleScreen(); requestAnimationFrame(loop);

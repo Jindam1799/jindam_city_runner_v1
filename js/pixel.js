@@ -61,6 +61,11 @@ const PX = (() => {
     xiaoyu:   { hair: '#3a2416', hairL: '#5c3c26', skin: '#f8cfb0', skinD: '#dca184', coat: '#5fae6e', coatD: '#3f8250', coatL: '#8fd39a', scarf: '#fff6dc', scarfD: '#d8ccb0', pants: '#3a4677', pantsD: '#272f55', shoe: '#f4f1ea', shoeD: '#5fae6e', style: 'bob' },
     xiaohua:  { hair: '#2a1d22', hairL: '#4a3540', skin: '#f8cfb0', skinD: '#dca184', coat: '#f28bb0', coatD: '#c45f86', coatL: '#ffb8cf', scarf: '#ffe27a', scarfD: '#d6b040', pants: '#6a5aa8', pantsD: '#4a3e7a', shoe: '#fff', shoeD: '#f28bb0', style: 'flower' },
     xiaodong: { hair: '#231c2c', hairL: '#3e3450', skin: '#f8cfb0', skinD: '#dca184', coat: '#4f8fdc', coatD: '#3364a8', coatL: '#8cbcf0', scarf: '#f2f2f2', scarfD: '#c8ccd6', pants: '#2f3550', pantsD: '#1f2438', shoe: '#6b4a32', shoeD: '#4a3222', style: 'hat' },
+    uncle:    { hair: '#3a3036', hairL: '#5a4c54', skin: '#f2c09a', skinD: '#d08f6e', coat: '#6b7a8f', coatD: '#4b5868', coatL: '#95a3b5', scarf: '#c9b48a', scarfD: '#a08a60', pants: '#3a3a48', pantsD: '#262632', shoe: '#3b2a22', shoeD: '#241812', style: 'spiky' },
+    auntie:   { hair: '#2b1a20', hairL: '#4e3240', skin: '#f6c7a8', skinD: '#d89a80', coat: '#9b59b6', coatD: '#6f3a88', coatL: '#c38fd6', scarf: '#ffd36e', scarfD: '#d6a43c', pants: '#3a2a48', pantsD: '#261a32', shoe: '#3a2a48', shoeD: '#9b59b6', style: 'bob' },
+    grandpa:  { hair: '#d8d4dc', hairL: '#ffffff', skin: '#efbf98', skinD: '#c98f6c', coat: '#8a6a4a', coatD: '#654a30', coatL: '#b08e6a', scarf: '#6a8a5a', scarfD: '#4a6a3a', pants: '#4a4048', pantsD: '#332a32', shoe: '#2a2024', shoeD: '#4a3a30', style: 'old' },
+    student:  { hair: '#1f1a26', hairL: '#3d3350', skin: '#f8cfb0', skinD: '#dca184', coat: '#3fa7a0', coatD: '#2a7a74', coatL: '#7fd6cc', scarf: '#ffffff', scarfD: '#d0d0d8', pants: '#2f3550', pantsD: '#1f2438', shoe: '#f4f1ea', shoeD: '#3fa7a0', style: 'spiky' },
+    club:     { hair: '#1a1420', hairL: '#2e2638', skin: '#e8b892', skinD: '#c48c6c', coat: '#2e2a3a', coatD: '#1c1826', coatL: '#4a4458', scarf: '#c0392b', scarfD: '#8a2a24', pants: '#24202e', pantsD: '#16121e', shoe: '#16121e', shoeD: '#c0392b', style: 'club' },
     teacher:  { hair: '#2b1a14', hairL: '#4e3226', skin: '#f8cfb0', skinD: '#dca184', coat: '#ff9466', coatD: '#d0663e', coatL: '#ffbc94', scarf: '#fff6dc', scarfD: '#d8ccb0', pants: '#5d4a8c', pantsD: '#40326a', shoe: '#40326a', shoeD: '#ff9466', style: 'long' }
   };
   const SW = 26, SH = 37, HIPX = 12, HIPY = 26;
@@ -89,6 +94,8 @@ const PX = (() => {
     if (L.style === 'flower') { R(g, cx - 4, cy - 8, 2, 2, '#ff6f91'); R(g, cx, cy - 9, 2, 2, '#ffd36e'); R(g, cx + 3, cy - 8, 2, 2, '#fff'); P(g, cx - 3, cy - 7, '#ffd36e'); }
     if (L.style === 'hat') { [6, 8, 10, 12, 12].forEach((w, i) => R(g, cx - Math.floor(w / 2), cy - 10 + i, w, 1, '#e2504c')); R(g, cx - 6, cy - 5, 13, 2, '#f2f2f2'); R(g, cx - 3, cy - 9, 2, 3, '#ff8a7a'); R(g, cx + 1, cy - 9, 1, 3, '#b83a36'); disc(g, cx, cy - 12, 2, '#f2f2f2'); }
     if (L.style === 'pigtail') { R(g, cx - 2, cy - 7, 2, 1, '#ffd36e'); }
+    if (L.style === 'old') { R(g, cx - 4, cy - 7, 8, 1, L.skin); R(g, cx - 2, cy - 6, 6, 1, L.skin); R(g, cx + 2, cy + 3, 4, 1, L.hair); }
+    if (L.style === 'club') { R(g, cx - 7, cy - 6, 15, 2, '#16121e'); [8, 10, 10].forEach((w, i) => R(g, cx - 5, cy - 11 + i, w + 2, 1, '#2a2436')); R(g, cx - 5, cy - 8, 12, 1, '#c0392b'); }
     // 눈 (오른쪽을 봄) — mood: ok | happy | hurt | blink | surprise | sad, 'talk'가 붙으면 입을 벌림
     const m = mood || 'ok', eye = /happy/.test(m) ? 'happy' : /hurt/.test(m) ? 'hurt' : /blink/.test(m) ? 'blink' : /surprise/.test(m) ? 'surprise' : /sad/.test(m) ? 'sad' : 'ok';
     if (eye === 'happy') { R(g, cx + 2, cy, 3, 1, '#1d1424'); P(g, cx + 2, cy - 1, '#1d1424'); P(g, cx + 4, cy - 1, '#1d1424'); }
@@ -97,6 +104,7 @@ const PX = (() => {
     else if (eye === 'surprise') { R(g, cx + 2, cy - 2, 3, 4, '#fff'); R(g, cx + 3, cy - 1, 2, 2, '#1d1424'); R(g, cx + 1, cy - 4, 3, 1, L.hair); }
     else if (eye === 'sad') { R(g, cx + 2, cy, 2, 2, '#fff'); R(g, cx + 3, cy, 1, 2, '#1d1424'); P(g, cx + 1, cy - 2, L.hair); P(g, cx + 2, cy - 3, L.hair); P(g, cx + 3, cy - 3, L.hair); }
     else { R(g, cx + 2, cy - 1, 2, 3, '#fff'); R(g, cx + 3, cy - 1, 1, 3, '#1d1424'); P(g, cx + 3, cy - 1, '#fff'); R(g, cx + 1, cy - 2, 3, 1, L.hair); }
+    if (L.style === 'club') { R(g, cx + 1, cy - 1, 5, 3, '#16121e'); P(g, cx + 2, cy - 1, '#6a6478'); R(g, cx - 2, cy, 3, 1, '#16121e'); }
     R(g, cx + 1, cy + 3, 2, 1, /happy|surprise/.test(m) ? '#ff7a90' : '#ff9aa8');   // 볼
     if (/talk/.test(m)) { R(g, cx + 3, cy + 3, 3, 2, '#7a2a34'); P(g, cx + 4, cy + 4, '#ff8a8a'); }
     else if (eye === 'surprise') R(g, cx + 4, cy + 3, 2, 2, '#7a2a34');
