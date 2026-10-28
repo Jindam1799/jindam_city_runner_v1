@@ -89,12 +89,20 @@ const PX = (() => {
     if (L.style === 'flower') { R(g, cx - 4, cy - 8, 2, 2, '#ff6f91'); R(g, cx, cy - 9, 2, 2, '#ffd36e'); R(g, cx + 3, cy - 8, 2, 2, '#fff'); P(g, cx - 3, cy - 7, '#ffd36e'); }
     if (L.style === 'hat') { [6, 8, 10, 12, 12].forEach((w, i) => R(g, cx - Math.floor(w / 2), cy - 10 + i, w, 1, '#e2504c')); R(g, cx - 6, cy - 5, 13, 2, '#f2f2f2'); R(g, cx - 3, cy - 9, 2, 3, '#ff8a7a'); R(g, cx + 1, cy - 9, 1, 3, '#b83a36'); disc(g, cx, cy - 12, 2, '#f2f2f2'); }
     if (L.style === 'pigtail') { R(g, cx - 2, cy - 7, 2, 1, '#ffd36e'); }
-    // 눈 (오른쪽을 봄)
-    if (mood === 'happy') { R(g, cx + 2, cy, 3, 1, '#1d1424'); P(g, cx + 2, cy - 1, '#1d1424'); P(g, cx + 4, cy - 1, '#1d1424'); }
-    else if (mood === 'hurt') { P(g, cx + 2, cy - 1, '#1d1424'); P(g, cx + 4, cy + 1, '#1d1424'); P(g, cx + 3, cy, '#1d1424'); P(g, cx + 2, cy + 1, '#1d1424'); P(g, cx + 4, cy - 1, '#1d1424'); }
+    // 눈 (오른쪽을 봄) — mood: ok | happy | hurt | blink | surprise | sad, 'talk'가 붙으면 입을 벌림
+    const m = mood || 'ok', eye = /happy/.test(m) ? 'happy' : /hurt/.test(m) ? 'hurt' : /blink/.test(m) ? 'blink' : /surprise/.test(m) ? 'surprise' : /sad/.test(m) ? 'sad' : 'ok';
+    if (eye === 'happy') { R(g, cx + 2, cy, 3, 1, '#1d1424'); P(g, cx + 2, cy - 1, '#1d1424'); P(g, cx + 4, cy - 1, '#1d1424'); }
+    else if (eye === 'hurt') { P(g, cx + 2, cy - 1, '#1d1424'); P(g, cx + 4, cy + 1, '#1d1424'); P(g, cx + 3, cy, '#1d1424'); P(g, cx + 2, cy + 1, '#1d1424'); P(g, cx + 4, cy - 1, '#1d1424'); }
+    else if (eye === 'blink') { R(g, cx + 2, cy + 1, 3, 1, '#1d1424'); R(g, cx + 1, cy - 2, 3, 1, L.hair); }
+    else if (eye === 'surprise') { R(g, cx + 2, cy - 2, 3, 4, '#fff'); R(g, cx + 3, cy - 1, 2, 2, '#1d1424'); R(g, cx + 1, cy - 4, 3, 1, L.hair); }
+    else if (eye === 'sad') { R(g, cx + 2, cy, 2, 2, '#fff'); R(g, cx + 3, cy, 1, 2, '#1d1424'); P(g, cx + 1, cy - 2, L.hair); P(g, cx + 2, cy - 3, L.hair); P(g, cx + 3, cy - 3, L.hair); }
     else { R(g, cx + 2, cy - 1, 2, 3, '#fff'); R(g, cx + 3, cy - 1, 1, 3, '#1d1424'); P(g, cx + 3, cy - 1, '#fff'); R(g, cx + 1, cy - 2, 3, 1, L.hair); }
-    R(g, cx + 1, cy + 3, 2, 1, '#ff9aa8');                 // 볼
-    R(g, cx + 4, cy + 4, 2, 1, mood === 'hurt' ? '#1d1424' : '#c0605a');   // 입
+    R(g, cx + 1, cy + 3, 2, 1, /happy|surprise/.test(m) ? '#ff7a90' : '#ff9aa8');   // 볼
+    if (/talk/.test(m)) { R(g, cx + 3, cy + 3, 3, 2, '#7a2a34'); P(g, cx + 4, cy + 4, '#ff8a8a'); }
+    else if (eye === 'surprise') R(g, cx + 4, cy + 3, 2, 2, '#7a2a34');
+    else if (eye === 'happy') { R(g, cx + 3, cy + 4, 3, 1, '#c0605a'); P(g, cx + 5, cy + 3, '#c0605a'); }
+    else if (eye === 'sad') { R(g, cx + 3, cy + 5, 3, 1, '#c0605a'); P(g, cx + 3, cy + 4, '#c0605a'); }
+    else R(g, cx + 4, cy + 4, 2, 1, eye === 'hurt' ? '#1d1424' : '#c0605a');   // 입
   }
   function body(g, L, x, y, h = 9) {
     R(g, x - 4, y, 8, h, L.coat); R(g, x - 4, y, 2, h, L.coatD); R(g, x + 2, y + 1, 1, h - 2, L.coatL);
@@ -103,8 +111,8 @@ const PX = (() => {
   /* 포즈: t = 'run'(f 0~5) | 'jump' | 'fall' | 'slide' | 'stand' | 'hurt' | 'climb'(f 0~1) | 'cheer' */
   const RUN = [[35, -15, -30, -65], [18, -45, -12, -30], [0, -75, 12, -5], [-30, -65, 35, -15], [-12, -30, 18, -45], [12, -5, 0, -75]];
   const cache = {};
-  function person(look, pose = 'stand', f = 0) {
-    const key = look + pose + f; if (cache[key]) return cache[key];
+  function person(look, pose = 'stand', f = 0, md) {
+    f = ((f | 0) % 6 + 6) % 6; const key = look + pose + f + (md || ''); if (cache[key]) return cache[key];
     const L = LOOK[look] || LOOK.minhao;
     const [c, g] = mk(SW, SH);
     let bob = 0, hx = HIPX, hy = HIPY, legs, arms, mood = 'ok';
@@ -114,7 +122,12 @@ const PX = (() => {
     else if (pose === 'hurt') { legs = [20, -20, -25, -30]; arms = [-160, 0, -140, 10]; mood = 'hurt'; }
     else if (pose === 'climb') { legs = f ? [30, -80, -5, -10] : [-5, -10, 30, -80]; arms = f ? [-170, 0, -150, 20] : [-150, 20, -170, 0]; }
     else if (pose === 'cheer') { legs = [8, 0, -8, 0]; arms = [-165, -10, -160, 10]; mood = 'happy'; bob = f ? -1 : 0; }
-    else { legs = [5, 0, -5, 0]; arms = [10, -10, -10, -10]; }
+    else if (pose === 'talk') { legs = [5, 0, -5, 0]; arms = f ? [-95, -40, -10, -10] : [-70, -60, -5, -15]; bob = f ? 0 : -1; }
+    else if (pose === 'wave') { legs = [5, 0, -5, 0]; arms = f ? [-165, 25, -10, -10] : [-150, -20, -10, -10]; mood = 'happy'; }
+    else if (pose === 'think') { legs = [5, 0, -5, 0]; arms = [-120, -110, -10, -10]; }
+    else if (pose === 'shrug') { legs = [6, 0, -6, 0]; arms = [-60, -80, -60, -80]; }
+    else { legs = [5, 0, -5, 0]; arms = [10, -10, -10, -10]; bob = f ? 1 : 0; }
+    if (md) mood = md;
     if (pose === 'slide') {
       // 미끄러지기: 몸을 뒤로 눕히고 다리를 앞으로
       const y0 = SH - 9;
@@ -181,6 +194,9 @@ const PX = (() => {
     outline(c);
     return cache[key] = c;
   }
+  /* 좌우 뒤집기 (마주 보게) */
+  const flipC = new WeakMap();
+  function flip(c) { if (flipC.has(c)) return flipC.get(c); const [d, g] = mk(c.width, c.height); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(c, 0, 0); flipC.set(c, d); return d; }
   /* 얼굴 그림 (대화창용, 3배) */
   const faceCache = {};
   function faceURL(look, mood = 'ok') {
@@ -193,5 +209,5 @@ const PX = (() => {
     const [c2, g2] = mk(60, 60); g2.drawImage(c, 0, 0, 60, 60);
     return faceCache[k] = c2.toDataURL();
   }
-  return { mk, R, P, rng, disc, ellipse, line, dither, vgrad, outline, text, person, rider, faceURL, LOOK, SW, SH };
+  return { mk, R, P, rng, disc, ellipse, line, dither, vgrad, outline, text, person, rider, faceURL, flip, LOOK, SW, SH };
 })();

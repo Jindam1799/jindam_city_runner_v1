@@ -203,6 +203,29 @@ const ART = (() => {
     return { c, kind, high: ['signboard', 'birdcage', 'basket', 'icicle', 'banner'].includes(kind) };
   }
 
+
+  /* ── 새 장애물: 두 번 점프 상자탑 / 굴러오는 공 / 날아오는 비둘기 ── */
+  function tall(col) {
+    const [c, g] = mk(20, 58);
+    for (let i = 0; i < 3; i++) { const y = 58 - (i + 1) * 19; R(g, 0, y, 20, 19, '#b8834a'); R(g, 0, y, 20, 2, '#d8a468'); R(g, 0, y + 8, 20, 2, '#8a5a30'); R(g, 1, y + 2, 1, 17, '#d8a468'); }
+    R(g, 4, 1, 12, 7, col); text(g, '高', 6, 0, 8, '#ffffff');
+    return { c: outline(c), kind: 'tall', high: false, tall: true };
+  }
+  const ROLLPAL = { cq: ['#e2504c', '#f2c14e'], cd: ['#8a5a3a', '#c99252'], km: ['#4f9450', '#2f6a35'], heb: ['#f4f8ff', '#c8d6ee'], hq: ['#8a5a3a', '#c99252'] };
+  function roller(theme) {
+    const [a, b] = ROLLPAL[theme] || ROLLPAL.cq, fr = [];
+    for (let f = 0; f < 4; f++) {
+      const [c, g] = mk(18, 18); disc(g, 9, 9, 8, a);
+      for (let k = 0; k < 3; k++) { const t = (k / 3 + f / 12) * Math.PI * 2; line(g, 9 - Math.cos(t) * 7, 9 - Math.sin(t) * 7, 9 + Math.cos(t) * 7, 9 + Math.sin(t) * 7, b, 2); }
+      R(g, 5, 4, 3, 2, '#ffffff88'); fr.push(outline(c));
+    }
+    return { fr, kind: 'roll', high: false, c: fr[0] };
+  }
+  const BIRD = [0, 1].map(f => { const [c, g] = mk(16, 11);
+    ellipse(g, 8, 7, 5, 3, '#8f96a8'); disc(g, 12, 5, 2, '#6f7688'); P(g, 13, 4, '#ffffff'); P(g, 15, 5, '#f2a03c'); R(g, 1, 7, 3, 1, '#6f7688');
+    if (f) { line(g, 6, 6, 3, 0, '#b8bfd0', 2); } else { line(g, 6, 7, 3, 10, '#b8bfd0', 2); }
+    R(g, 7, 7, 3, 1, '#7fd6a8'); return outline(c); });
+
   /* ── 아이템 ── */
   const ITEM = {};
   ITEM.clue = (() => { const [c, g] = mk(14, 16); disc(g, 6, 6, 5, '#f2c14e'); disc(g, 6, 6, 3, '#bfe6ff'); R(g, 4, 4, 2, 2, '#ffffff'); line(g, 9, 9, 12, 13, '#8a5a30', 2); return outline(c); })();
@@ -214,18 +237,21 @@ const ART = (() => {
 
   /* ── 덩어리 관문 (세 칸 높이) ── */
   function gate(col) {
-    const [c, g] = mk(22, 120);
-    R(g, 0, 0, 4, 120, '#8a2a24'); R(g, 18, 0, 4, 120, '#8a2a24'); R(g, 1, 0, 2, 120, col); R(g, 19, 0, 2, 120, col);
-    [0, 38, 76].forEach(y => { R(g, 0, y, 22, 5, '#c0392b'); R(g, 0, y, 22, 1, '#f2c14e'); });
-    R(g, -2, 0, 26, 3, '#2a1d24');
+    const [c, g] = mk(30, 120);
+    R(g, 0, 0, 5, 120, '#8a2a24'); R(g, 25, 0, 5, 120, '#8a2a24'); R(g, 1, 0, 2, 120, col); R(g, 26, 0, 2, 120, col);
+    [[5, 33], [43, 33], [81, 39]].forEach(([y, h]) => { R(g, 5, y, 20, h, '#fff6dc55'); R(g, 5, y, 20, 1, '#ffffff88'); });
+    [0, 38, 76].forEach(y => { R(g, 0, y, 30, 5, '#c0392b'); R(g, 0, y, 30, 1, '#f2c14e'); });
+    R(g, -2, 0, 34, 3, '#2a1d24');
     return outline(c);
   }
+  /* 막힌 문 (철창) */
+  const BARS = (() => { const [c, g] = mk(20, 38); for (let x = 1; x < 20; x += 4) R(g, x, 0, 2, 38, '#4a4458'); R(g, 0, 10, 20, 2, '#4a4458'); R(g, 0, 26, 20, 2, '#4a4458'); return c; })();
 
   /* ── 결승 탑 (덩어리 사다리) ── */
-  function towerScene(theme, W) {
+  function towerScene(theme, W, cx) {
     const t = THEMES[theme](); const [c, g] = mk(W, H);
     t.sky(g); g.drawImage(t.layers[0].c, 0, 0);
-    const tx = Math.round(W / 2 - 34), tw = 68, r = rng(40);
+    const tx = Math.round((cx == null ? W / 2 : cx) - 34), tw = 68, r = rng(40);
     const cols = { cq: ['#e9e2d6', '#b9b0a4', '#9fb6c0'], cd: ['#f3eee2', '#c9bfa8', '#b03a2e'], km: ['#fbe3e8', '#d8b0bc', '#ff9ab3'], heb: ['#9fe6ff', '#5cc4e8', '#e0f8ff'], hq: ['#5a4a6c', '#3a2a4c', '#ffd36e'] }[theme];
     R(g, tx, 28, tw, GY - 28, cols[0]); R(g, tx + tw - 6, 28, 6, GY - 28, cols[1]);
     for (let i = 0; i < 6; i++) {
@@ -347,5 +373,5 @@ const ART = (() => {
     return outline(c);
   }
 
-  return { H, GY, LW, THEMES, ITEM, gate, towerScene, mapCanvas, cityIcon, MAP };
+  return { H, GY, LW, THEMES, ITEM, tall, roller, BIRD, BARS, gate, towerScene, mapCanvas, cityIcon, MAP };
 })();
