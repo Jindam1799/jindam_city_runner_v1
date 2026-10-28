@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#222">
+<div id="w"></div>
+<script src="../js/pixel.js"></script><script src="../js/art.js"></script>
+<script>
+const W=300,S=3;
+['cq','cd','km','heb','hq'].forEach((th,i)=>{const c=document.createElement('canvas');c.width=W;c.height=200;c.style.cssText=`width:${W*S}px;height:${200*S}px;image-rendering:pixelated;display:block;margin-bottom:6px`;document.getElementById('w').appendChild(c);
+ const g=c.getContext('2d');g.imageSmoothingEnabled=false;ART.drawBG(g,th,120+i*90,W,4000);
+ g.drawImage(PX.person('minhao','run',2),40,170-37);g.drawImage(ART.obj('low',th),110,152);g.drawImage(ART.obj('high',th),160,120);g.drawImage(ART.obj('clue',th),200,130);g.drawImage(ART.rider(1),240,170-38);});
+const m=document.createElement('canvas');m.width=280;m.height=170;m.style.cssText=`width:${280*S}px;height:${170*S}px;image-rendering:pixelated`;document.getElementById('w').appendChild(m);m.getContext('2d').drawImage(ART.chinaMap(280,170),0,0);
+</script>

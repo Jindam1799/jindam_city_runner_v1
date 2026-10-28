@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#222">
+<canvas id="c" width="1240" height="1500" style="image-rendering:pixelated"></canvas>
+<script src="../js/data1.js"></script><script src="../js/pixel.js"></script><script src="../js/art.js"></script>
+<script>
+const c=document.getElementById('c'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+const W=300,S=2;
+['cq','cd','km','heb'].forEach((k,i)=>{
+  const [v,vg]=PX.mk(W,200); const t=ART.THEMES[k](); t.sky(vg);
+  t.layers.forEach((L,j)=>vg.drawImage(L.c,-(j*37)%ART.LW,0));
+  vg.drawImage(t.ground,0,ART.GY);
+  // 장애물·사람
+  vg.drawImage(t.low[0].c,120,ART.GY-t.low[0].c.height); vg.drawImage(t.high[0].c,200,ART.GY-16-t.high[0].c.height);
+  vg.drawImage(PX.person('minhao','run',1),60,ART.GY-PX.SH+1); vg.drawImage(PX.rider('minhao',1),240,ART.GY-PX.SH+1);
+  vg.drawImage(ART.ITEM.clue,100,130); vg.drawImage(ART.ITEM.bike,160,150); vg.drawImage(ART.gate(t.col),270,ART.GY-120);
+  g.drawImage(v,(i%2)*(W*S+20),Math.floor(i/2)*(200*S+20),W*S,200*S);
+});
+const m=ART.mapCanvas(); g.drawImage(m.c,0,860,m.c.width*2,m.c.height*2);
+</script>

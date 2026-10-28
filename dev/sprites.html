@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#9ad0f5">
+<canvas id="c" width="900" height="600" style="image-rendering:pixelated"></canvas>
+<script src="../js/pixel.js"></script>
+<script>
+const c=document.getElementById('c'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+const S=5;let x=10,y=10;
+const poses=[['run',0],['run',1],['run',2],['run',3],['run',4],['run',5],['jump',0],['fall',0],['slide',0],['hurt',0],['climb',0],['cheer',0],['stand',0]];
+poses.forEach(([p,f],i)=>{g.drawImage(PX.person('minhao',p,f),10+(i%7)*(PX.SW*S+6),10+Math.floor(i/7)*(PX.SH*S+6),PX.SW*S,PX.SH*S);});
+['xiaomei','xiaoyu','xiaohua','xiaodong','teacher'].forEach((l,i)=>g.drawImage(PX.person(l,'stand',0),10+i*(PX.SW*S+6),380,PX.SW*S,PX.SH*S));
+</script>
