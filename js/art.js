@@ -236,16 +236,20 @@ const ART = (() => {
   ITEM.heart = (() => { const [c, g] = mk(9, 8); [[1, 0, 2], [5, 0, 2], [0, 1, 9], [0, 2, 9], [0, 3, 9], [1, 4, 7], [2, 5, 5], [3, 6, 3], [4, 7, 1]].forEach(([x, y, w]) => R(g, x, y, w, 1, '#e2504c')); R(g, 1, 1, 2, 1, '#ff9a9a'); return c; })();
 
   /* ── 덩어리 관문 (세 칸 높이) ── */
+  /* 2지선다 관문: 위 문(점프) · 가운데 벽 · 아래 틈(미끄러지기). 높이 104 */
   function gate(col) {
-    const [c, g] = mk(30, 120);
-    R(g, 0, 0, 5, 120, '#8a2a24'); R(g, 25, 0, 5, 120, '#8a2a24'); R(g, 1, 0, 2, 120, col); R(g, 26, 0, 2, 120, col);
-    [[5, 33], [43, 33], [81, 39]].forEach(([y, h]) => { R(g, 5, y, 20, h, '#fff6dc55'); R(g, 5, y, 20, 1, '#ffffff88'); });
-    [0, 38, 76].forEach(y => { R(g, 0, y, 30, 5, '#c0392b'); R(g, 0, y, 30, 1, '#f2c14e'); });
-    R(g, -2, 0, 34, 3, '#2a1d24');
+    const [c, g] = mk(30, 104);
+    R(g, 0, 0, 5, 104, '#8a2a24'); R(g, 25, 0, 5, 104, '#8a2a24'); R(g, 1, 0, 2, 104, col); R(g, 26, 0, 2, 104, col);
+    R(g, 5, 8, 20, 58, '#fff6dc44'); R(g, 5, 8, 20, 1, '#ffffff88');                 // 위 문
+    R(g, 0, 66, 30, 24, '#6a2a24'); R(g, 0, 66, 30, 2, '#f2c14e'); R(g, 0, 88, 30, 2, '#f2c14e');   // 가운데 벽
+    for (let x = 3; x < 28; x += 6) R(g, x, 70, 3, 16, '#8a3a2e');
+    R(g, 11, 71, 8, 13, '#2a1d24'); text(g, '?', 12, 70, 10, '#ffd36e');
+    R(g, 5, 90, 20, 14, '#fff6dc44');                                                  // 아래 틈
+    R(g, 0, 0, 30, 8, '#c0392b'); R(g, 0, 0, 30, 1, '#f2c14e'); R(g, -2, 0, 34, 2, '#2a1d24');
     return outline(c);
   }
-  /* 막힌 문 (철창) */
-  const BARS = (() => { const [c, g] = mk(20, 38); for (let x = 1; x < 20; x += 4) R(g, x, 0, 2, 38, '#4a4458'); R(g, 0, 10, 20, 2, '#4a4458'); R(g, 0, 26, 20, 2, '#4a4458'); return c; })();
+  const BARS = (() => { const [c, g] = mk(20, 58); for (let x = 1; x < 20; x += 4) R(g, x, 0, 2, 58, '#4a4458'); [12, 30, 46].forEach(y => R(g, 0, y, 20, 2, '#4a4458')); return c; })();
+  const BARS_DN = (() => { const [c, g] = mk(20, 13); for (let x = 1; x < 20; x += 4) R(g, x, 0, 2, 13, '#4a4458'); R(g, 0, 5, 20, 2, '#4a4458'); return c; })();
 
   /* ── 결승 탑 (덩어리 사다리) ── */
   function towerScene(theme, W, cx) {
@@ -373,5 +377,5 @@ const ART = (() => {
     return outline(c);
   }
 
-  return { H, GY, LW, THEMES, ITEM, tall, roller, BIRD, BARS, gate, towerScene, mapCanvas, cityIcon, MAP };
+  return { H, GY, LW, THEMES, ITEM, tall, roller, BIRD, BARS, BARS_DN, gate, towerScene, mapCanvas, cityIcon, MAP };
 })();

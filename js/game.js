@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.2.0 (2026.10.29)';
+const APP_VERSION = 'v0.2.1 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -270,7 +270,9 @@ function makeTerrain(L, gatesAt) {
   const pts = [[-200, 0], [320, 0]]; let x = 320, h = 0;
   const LV = [0, 14, 28, 42];
   while (x < L + 400) {
-    let nh = pick(LV.filter(v => v !== h && Math.abs(v - h) <= 28));
+    const gateSoon = gatesAt.some(g => g > x && g < x + 520);
+    let nh = pick(LV.filter(v => v !== h && Math.abs(v - h) <= 28 && (!gateSoon || v < h || v <= 14)));
+    if (nh === undefined) { x += 50; pts.push([x, h]); continue; }
     const len = Math.abs(nh - h) * 3.2;
     if (gatesAt.some(g => g > x - 120 && g < x + len + 120) || x + len > L - 40) { x += 50; pts.push([x, h]); continue; }
     x += len; h = nh; pts.push([x, h]);
@@ -331,9 +333,9 @@ function startRun(cs, boss = false) {
   runPad(); setTop();
 }
 function runPad() {
-  pad.innerHTML = `<div class="hudrun"><span id="hearts"></span><span id="clues"></span><span id="bikeT"></span></div>
-    <div class="prog"><i id="progI"></i></div>
-    <div class="ctrl"><button class="cbtn jump" id="bJ">⤒<small>점프 (두 번 = 높이)</small></button><button class="cbtn slide" id="bS">⤓<small>미끄러지기</small></button></div>
+  pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="clues"></span><span id="bikeT"></span></div>
+    <div class="prog"><i id="progI"></i></div><div id="gq"></div><div id="msg"></div></div>
+    <div class="ctrl"><button class="cbtn jump" id="bJ">⤒<small>점프 (두 번 = 높이)</small><b class="opt" id="oJ"></b></button><button class="cbtn slide" id="bS">⤓<small>미끄러지기</small><b class="opt" id="oS"></b></button></div>
     <div class="small center">화면을 눌러도 점프 · 아래로 쓸면 미끄러지기 · 키보드 ↑/스페이스 ↓</div>`;
   const bJ = $('#bJ'), bS = $('#bS');
   bJ.addEventListener('pointerdown', e => { e.preventDefault(); Sound.init(); doJump(); });
@@ -382,7 +384,7 @@ function updateRun(dt) {
   R.t += dt;
   const gateAhead = R.objs.find(o => o.k === 'gate' && !o.passed && o.x - R.dist > -10 && o.x - R.dist < 185);
   R.slowK += ((gateAhead ? .45 : 1) - R.slowK) * Math.min(1, dt * 4);
-  if (gateAhead !== R.gateNow) { R.gateNow = gateAhead; showGate(gateAhead); if (gateAhead && !save.tutGate) return gateTutorial(); }
+  if (gateAhead !== R.gateNow) { R.gateNow = gateAhead; showGate(gateAhead); if (gateAhead && save.tutGate !== 2) return gateTutorial(); }
   const fx0 = footX(), slope = (gh(fx0 + 6) - gh(fx0 - 6)) / 12;
   const sp = (R.speed + Math.min(28, R.t * .9)) * (R.bike > 0 ? 1.7 : 1) * R.slowK * (R.ground ? Math.max(.75, Math.min(1.25, 1 - slope * .9)) : 1);
   R.dist += sp * dt;
@@ -438,58 +440,67 @@ const birdY = o => 12 + 12 * (1 + Math.sin(R.t * 2.6 + o.ph));
 function collectClue(o) {
   const c = R.cs.clues[o.ci]; R.got.push(o.ci); delete save.weakClue[R.cs.no + ':' + o.ci]; persist();
   Sound.sfx('sel'); speak(c[0]); puff(PLAYER_X + 12, GY - R.y - 20, '#ffe08a');
-  const chip = el(`<div class="cluechip">🔍 <b>${esc(c[0])}</b>${set.py ? ` <span>${esc(c[1])}</span>` : ''}${set.ko ? ` · ${esc(c[2])}` : ''}${c[3] ? ` <i>HSK${c[3]}</i>` : ''}</div>`);
-  ov.appendChild(chip); setTimeout(() => chip.remove(), 1600);
+  msg(`🔍 <b>${esc(c[0])}</b>${set.py ? ` <span>${esc(c[1])}</span>` : ''}${set.ko ? ` · ${esc(c[2])}` : ''}${c[3] ? ` <i>HSK${c[3]}</i>` : ''}`, 'clue', 1700);
   updRunHud();
 }
 function bikeCard() {
-  const chip = el(`<div class="cluechip bike">🚲 <b>共享单车</b>${set.py ? ' <span>gòngxiǎng dānchē</span>' : ''}${set.ko ? ' · 공유 자전거! 6초 동안 씽씽' : ''}</div>`);
-  ov.appendChild(chip); setTimeout(() => chip.remove(), 2200); speak('共享单车');
+  msg(`🚲 <b>共享单车</b>${set.py ? ' <span>gòngxiǎng dānchē</span>' : ''}${set.ko ? ' · 공유 자전거! 6초 동안 씽씽' : ''}`, 'bike', 2200); speak('共享单车');
 }
-/* 관문: 문 세 개 (아래 = 그냥 달리기 / 가운데 = 점프 / 위 = 두 번 점프). 맞는 문만 열리고, 틀린 문은 잠겨서 튕겨 나와요. */
-const LANE_H = [20, 60, 98], LANE_NAME = ['⬇ 달리기', '⤒ 점프', '⤒⤒ 2단 점프'];
+/* 메시지: 게임 화면을 가리지 않는 자리 (세로 = 화면 아래 칸, 가로 = 맨 위 띠) */
+let msgT = 0;
+function msg(html, cls = '', ms = 1600) {
+  const m = $('#msg'); if (!m) return;
+  m.className = 'on ' + cls; m.innerHTML = html; clearTimeout(msgT);
+  msgT = setTimeout(() => { m.className = ''; m.innerHTML = ''; }, ms);
+}
+function flash(t, py, cls) { msg(`${esc(t)}${py && set.py ? ` <span>${esc(py)}</span>` : ''}`, cls, 1800); }
+/* 관문: 2지선다 — 위 답 = 점프로 통과, 아래 답 = 미끄러져서 통과. 틀린 쪽은 잠겨서 튕겨 나와요. */
+const GATE_UP = 66, GATE_DN = 7;
 async function gateTutorial() {
-  save.tutGate = 1; persist();
+  save.tutGate = 2; persist();
   const c = card(`<h2>🚪 덩어리 관문이에요!</h2>
-    <div class="t">빈칸 <b>＿</b> 에 들어갈 말이 적힌 <b>문</b>으로 지나가요.</div>
-    <div class="small" style="margin:1em 0">⬇ <b>아래 문</b> = 그냥 달리기<br>⤒ <b>가운데 문</b> = 점프 1번<br>⤒⤒ <b>위 문</b> = 점프 2번</div>
-    <div class="t">❌ 틀린 문은 <b>잠겨 있어서</b> 튕겨 나와요. 맞는 문을 찾을 때까지 다시 도전!</div>
+    <div class="t">빈칸 <b>＿</b> 에 들어갈 말을 골라요. 답은 두 개!</div>
+    <div class="small" style="margin:1em 0;font-size:1.1em">⤒ <b>위 답</b>이 맞으면 → <b>점프</b>로 통과<br>⤓ <b>아래 답</b>이 맞으면 → <b>미끄러지기</b>로 통과</div>
+    <div class="t">버튼에도 답이 적혀 있어요. 틀린 쪽은 잠겨 있어서 튕겨 나와요!</div>
     <div class="row"><button class="big go">알겠어요!</button></div>`);
   await wait(c);
 }
+function setOptBtns(o) {
+  const oJ = $('#oJ'), oS = $('#oS'); if (!oJ) return;
+  [oJ, oS].forEach((b, i) => { b.textContent = o ? o.opts[i] : ''; b.className = 'opt' + (o && o.locked.includes(i) ? ' x' : '') + (o && o.hint === i ? ' hint' : ''); });
+  pad.classList.toggle('asking', !!o);
+}
 function showGate(o) {
-  ov.querySelectorAll('.glab').forEach(x => x.remove()); pad.querySelectorAll('.gban').forEach(x => x.remove());
-  if (!o) return;
+  ov.querySelectorAll('.glab').forEach(x => x.remove());
+  const gq = $('#gq');
+  if (!o) { if (gq) { gq.innerHTML = ''; gq.className = ''; } setOptBtns(null); return; }
   const g = o.gate;
-  if (!o.opts) { o.opts = shuffle([g.ans].concat(g.wrong.slice(0, 2))); o.locked = []; }
-  const ban = el(`<div class="gban">${g.quiz ? `<div class="gq">${zhBlock(g.q, '', g.ko)}</div><div class="gh">알맞은 대답이 적힌 문으로 지나가요!</div>` : `<div class="gk">🚪 ${esc(g.ko)}</div><div class="gs">${esc(g.stem)}</div><div class="gh">빈칸에 들어갈 말이 적힌 문으로 지나가요!</div>`}</div>`);
-  const pr = pad.querySelector('.prog'); if (pr) pr.after(ban); else pad.appendChild(ban);
+  if (!o.opts) { o.opts = shuffle([g.ans, g.wrong[0]]); o.locked = []; o.hint = -1; }
+  if (gq) { gq.className = 'on'; gq.innerHTML = g.quiz ? `<span class="zh">${esc(g.q)}</span>${set.ko ? ` <small>${esc(g.ko)}</small>` : ''}` : `🚪 ${esc(g.ko)} <span class="zh">${esc(g.stem)}</span>`; }
   speak(g.quiz ? g.q : g.stem.replace(/＿+/, '什么'));
-  o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab${o.locked.includes(i) ? ' x' : ''}"><span class="ln">${LANE_NAME[i]}</span>${esc(t)}</div>`); ov.appendChild(d); return d; });
+  o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab ${i ? 'dn' : 'up'}${o.locked.includes(i) ? ' x' : ''}">${i ? '⤓' : '⤒'} ${esc(t)}</div>`); ov.appendChild(d); return d; });
+  setOptBtns(o);
 }
 function passGate(o) {
-  const rel = R.y - gh(o.x) + 15, lvl = rel < 41 ? 0 : rel < 80 ? 1 : 2;
-  const pickT = o.opts[lvl], ok = pickT === o.gate.ans, g = o.gate;
+  const pickI = !R.ground ? 0 : R.slide > 0 ? 1 : -1, g = o.gate;
   const full = g.quiz ? g.ans : g.stem.replace(/＿+/, g.ans);
-  if (ok) {
+  const bump = () => { Sound.sfx('bad'); R.dist -= 64; R.vy = 140; R.ground = false; R.jumps = 2; R.slide = 0; R.hurtT = .45; R.slowK = .3; puff(PLAYER_X + 18, GY - R.y - 15, '#ff8a7a'); };
+  if (pickI < 0) { bump(); flash('⤒ 점프 또는 ⤓ 미끄러지기로 골라요!', '', 'no'); return; }
+  if (o.opts[pickI] === g.ans) {
     o.passed = true;
     R.gates.push({ g, ok: !o.failed, first: true });
     Sound.sfx('good'); puff(PLAYER_X + 12, GY - R.y - 20, '#7fd6a8'); speak(full);
     if (!g.quiz && !o.failed) delete save.weakGate[R.cs.no + ':' + o.gi];
     flash(`⭕ ${full}`, g.py, 'ok'); persist();
-    setTimeout(() => { if (R && R.gateNow === o) { R.gateNow = null; showGate(null); } }, 250);
+    R.gateNow = null; showGate(null);
     return;
   }
-  // 잠긴 문 → 튕겨 나옴
-  o.failed = true; if (!o.locked.includes(lvl)) o.locked.push(lvl);
+  o.failed = true; if (!o.locked.includes(pickI)) o.locked.push(pickI); o.hint = 1 - pickI;
   if (!g.quiz) save.weakGate[R.cs.no + ':' + o.gi] = 1; persist();
-  Sound.sfx('bad'); R.dist -= 70; R.vy = 140; R.ground = false; R.jumps = 2; R.hurtT = .45; R.slowK = .3;
-  puff(PLAYER_X + 18, GY - R.y - 15, '#ff8a7a');
-  flash(`🔒 「${pickT}」 문은 잠겨 있어요! 다른 문으로`, '', 'no');
-  if (o.labs[lvl]) o.labs[lvl].classList.add('x');
-  if (o.locked.length >= 2) { const ai = o.opts.indexOf(g.ans); if (o.labs[ai]) o.labs[ai].classList.add('hint'); }
+  bump(); flash(`🔒 「${o.opts[pickI]}」은(는) 아니에요! ${pickI ? '⤒ 점프' : '⤓ 미끄러지기'}로 다시`, '', 'no');
+  if (o.labs[pickI]) o.labs[pickI].classList.add('x');
+  setOptBtns(o);
 }
-function flash(t, py, cls) { const f = el(`<div class="gflash ${cls}">${esc(t)}${py && set.py ? `<small>${esc(py)}</small>` : ''}</div>`); ov.appendChild(f); setTimeout(() => f.remove(), 1500); }
 async function failRun() {
   R.done = true; Sound.sfx('bad');
   const c = card(`<h2>😵 앗, 넘어졌어요!</h2><div class="small">괜찮아요! 다시 달리면 돼요. 모은 단서 ${R.got.length}개는 기억해 둘게요.</div><div class="row"><button class="big go">🔁 다시 달리기</button></div><div class="row"><button class="btn mp">지도로</button></div>`);
@@ -526,10 +537,10 @@ function drawRun(t) {
     else if (o.k === 'clue') { const y = GY - gh(o.x) - o.hy, b = Math.round(Math.sin(t / 180 + o.x) * 1.5); ctx.drawImage(ART.ITEM.clue, sx, Math.round(y) + b); if ((t / 120 | 0) % 6 === 0) PX.P(ctx, sx + 2, y + b, '#fff'); }
     else if (o.k === 'bike') { const y = Math.round(GY - gh(o.x) - o.hy); ctx.drawImage(ART.ITEM.bike, sx, y + Math.round(Math.sin(t / 200) * 1.5)); PX.R(ctx, sx + 6, y - 6, 10, 5, '#2a1d24'); PX.R(ctx, sx + 7, y - 5, 8, 3, '#f2b631'); }
     else if (o.k === 'gate') {
-      const base = Math.round(gh(o.x)), top = GY - base - 119;
-      ctx.drawImage(ART.gate(THEME.col), sx, top);
-      (o.locked || []).forEach(i => ctx.drawImage(ART.BARS, sx + 5, [top + 81, top + 43, top + 5][i] + (i ? -2 : 0)));
-      if (o.labs) o.labs.forEach((d, i) => { d.style.left = gx(sx + 15) + 'px'; d.style.top = gx(GY - base - LANE_H[i]) + 'px'; });
+      const base = Math.round(gh(o.x));
+      const gi = ART.gate(THEME.col); ctx.drawImage(gi, sx, GY - base - gi.height + 1);
+      (o.locked || []).forEach(i => i ? ctx.drawImage(ART.BARS_DN, sx + 5, GY - base - 13) : ctx.drawImage(ART.BARS, sx + 5, GY - base - 96));
+      if (o.labs) o.labs.forEach((d, i) => { d.style.left = gx(sx + 15) + 'px'; d.style.top = gx(GY - base - (i ? GATE_DN : GATE_UP)) + 'px'; });
     } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
