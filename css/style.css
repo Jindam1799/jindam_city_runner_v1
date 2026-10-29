@@ -248,3 +248,11 @@ a { color: #3a7bd5; }
 .stlab.on { background: #d9f5e5; } .stlab.fixed { background: #ffd36e; pointer-events: none; }
 .stlab.bad { background: #ffd2cc; animation: shake .3s; }
 #ov .stlab { position: absolute; }
+.badges { margin-left: auto; letter-spacing: calc(.4 * var(--u)); } .badges i { font-style: normal; opacity: .22; filter: grayscale(1); }
+.ptitle { display: flex; align-items: center; gap: calc(1 * var(--u)); }
+.symptom { background: #fff3c9; border-left: calc(1 * var(--u)) solid var(--red); padding: calc(1.2 * var(--u)) calc(2 * var(--u)); font-size: calc(3.4 * var(--u)); line-height: 1.5; margin: calc(1.4 * var(--u)) 0; text-align: left; }
+.stolen { font-size: calc(3.2 * var(--u)); margin-bottom: calc(1 * var(--u)); } .stolen b { font-family: var(--zh); color: var(--red); }
+.xnote { background: #2a2436; color: #fff8ec; border-radius: calc(2 * var(--u)); padding: calc(3 * var(--u)); text-align: center; border: calc(.6 * var(--u)) dashed #8a7a9a; }
+.xnote .xh { font-size: calc(3.6 * var(--u)); color: #c8b8d8; margin-bottom: calc(1.4 * var(--u)); } .xnote .xh span { font-family: var(--zh); color: #ffd36e; font-size: calc(6 * var(--u)); margin-left: calc(1 * var(--u)); }
+.xnote .zh { color: #ffd36e; } .xnote .py { color: #c8b8d8; } .xnote .ko { color: #e8dcf0; }
+.xnote .zh, .xnote .zh.big { background: none; border: none; box-shadow: none; color: #ffd36e; }

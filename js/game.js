@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.6.0 (2026.10.29)';
+const APP_VERSION = 'v0.7.0 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -56,7 +56,7 @@ const nm = s => String(s).replace(/\{name\}/g, save.name || '탐정');
 const speak = s => TTS.speak(s);
 function toast(m) { const t = el(`<div class="toast">${esc(m)}</div>`); uiRoot.appendChild(t); setTimeout(() => t.remove(), 1900); }
 const zhBlock = (zh, py, ko, big) => `<div class="zh ${big ? 'big' : ''}">${esc(zh)}</div>${set.py && py ? `<div class="py">${esc(py)}</div>` : ''}${set.ko && ko ? `<div class="ko">${esc(ko)}</div>` : ''}`;
-const WHO = { teacher: ['진아쌤', 'teacher'], minhao: ['民浩', 'minhao'] };
+const WHO = { teacher: ['진아쌤', 'teacher'], minhao: ['民浩', 'minhao'], police: ['赵队长 (자오 반장)', 'police'], club: ['무음단 단원', 'club'] };
 let enterHook = null, SPEAK = null;
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
@@ -234,18 +234,21 @@ async function openCase(no) {
     <div class="city">${esc(cur.city)} <small>${esc(cur.py)} · ${esc(cur.ko)}</small></div>
     ${zhBlock(cur.title.zh, cur.title.py, '', true)}<button class="mini" data-say="${esc(cur.title.zh)}">🔊</button>
     <div class="q">❓ ${esc(cur.title.ko)}</div>
+    ${STORY.cases[no] ? `<div class="symptom">✉ ${esc(cur.friend.name)}의 편지 · ${esc(STORY.cases[no].symptom)}</div><div class="stolen">🕳 도둑맞은 말: <b>${esc(STORY.cases[no].stolen)}</b></div>` : ''}
     <div class="note">📁 사건 파일 · ${esc(cur.note)}</div>
-    <div class="small">📚 교재 1권 ${no}과 과제 · 단서 10개 → 덩어리 관문 → 덩어리 사다리</div></div>
+    <div class="small">📚 교재 1권 ${no}과 과제 · 단서 추격 → 탑에서 외치기 → 검문소</div></div>
     <div class="row"><button class="big go">🚄 ${esc(cur.city)}로 출발!</button></div>`, 'lettercard');
   speak(cur.title.zh);
   await wait(c);
-  await say([{ who: 'teacher', t: STORY.depart[no] }]);
+  await say([{ who: 'teacher', t: (STORY.cases[no] || {}).depart || '' }]);
   // 도착 장면 + 친구 대화 (교재 미니 대화)
   go('arrive'); Sound.bgm('talk'); arriveT = performance.now();
   const f = cur.friend;
   await sleep(Math.max(900, (viewCX() + 20) * 14 + 200));
   for (const [zh, py, ko, who] of cur.intro) await say([{ who: who === 'me' ? 'minhao' : f.name, look: f.look, zh: [zh, py, ko] }], who === 'me' ? {} : { who: [`${f.name} (${f.ko})`, f.look] });
-  await say([{ who: f.name, look: f.look, t: `이 도시의 비밀을 풀려면 단서 10개가 필요해. 길에 떨어진 단서를 주우면서 따라와!` }], { who: [`${f.name} (${f.ko})`, f.look] });
+  const sc = STORY.cases[no];
+  if (sc) await say([{ zh: sc.tip, look: f.look }], { who: [`${f.name} (${f.ko})`, f.look] });
+  await say([{ who: 'minhao', t: STORY.scene.run }]);
   startRun(cur);
 }
 let arriveT = 0;
@@ -447,7 +450,7 @@ function updateRun(dt) {
       if (sx + 20 > px0 && sx < px1 && GY - R.y - ph < by + 14 && GY - R.y > by) { o.gone = true; R.bike = 6; Sound.sfx('bike'); bikeCard(); }
     } else if (o.k === 'gate') {
       if (!o.passed) { if (forkStep(o, footX())) return; }
-    } else if (o.k === 'event' && !o.done && sx < PLAYER_X) { o.done = true; MINI.start(o.mg, R.cs, R); return;
+    } else if (o.k === 'event' && !o.done && sx < PLAYER_X) { o.done = true; say([{ who: 'minhao', t: STORY.scene[o.mg] }]).then(() => MINI.start(o.mg, R.cs, R)); return;
     } else if (o.k === 'goal' && sx < PLAYER_X) { R.done = true; return finishRun(); }
   }
   R.fx.forEach(f => { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 140 * dt; f.life -= dt; }); R.fx = R.fx.filter(f => f.life > 0);
@@ -476,8 +479,8 @@ function flash(t, py, cls) { msg(`${esc(t)}${py && set.py ? ` <span>${esc(py)}</
 const FORK_L = 300, PLAT_H = 50, FORK_IN = 12, FORK_REV = FORK_L - 72, DECK0 = 8, DECK1 = FORK_L - 44;
 async function gateTutorial() {
   save.tutGate = 3; persist();
-  const c = card(`<h2>🛣 갈림길 관문이에요!</h2>
-    <div class="t">빈칸 <b>＿</b> 에 들어갈 말이 적힌 <b>길</b>을 골라요.</div>
+  const c = card(`<h2>🛣 갈림길! 가짜 표지판 조심</h2>
+    <div class="t">무음단이 길마다 가짜 표지판을 세워 놨어요. 빈칸 <b>＿</b> 에 맞는 말이 적힌 길만 진짜 길이에요.</div>
     <div class="small" style="margin:1em 0;font-size:1.1em">⤒ <b>점프</b> → 위 길 (다리)<br>➡ <b>그냥 달리기</b> → 아래 길</div>
     <div class="t">정답은 <b>길 끝의 ❓ 커튼</b>에서 밝혀져요. 틀린 길로 가면… 경찰에게 잡히거나, 벽에 부딪히거나, 다리가 무너질지도! 😱</div>
     <div class="row"><button class="big go">조심해서 고를게요!</button></div>`);
@@ -650,6 +653,7 @@ function drawRun(t) {
     else if (o.k === 'gate') drawFork(o, sx, t);
     else if (o.k === 'event' && !o.done) { const b = Math.round(gh(o.x)), y = GY - b; PX.R(ctx, sx + 7, y - 30, 2, 30, '#3b2a35'); for (let k = 0; k < 9; k++) PX.R(ctx, sx + 8 - k, y - 44 + k * 1.5, k * 2 + 1, 2, '#2a1d24'); for (let k = 1; k < 8; k++) PX.R(ctx, sx + 8 - k + 1, y - 42 + k * 1.5, k * 2 - 1, 2, '#ffd36e'); PX.text(ctx, '!', sx + 6, y - 40, 8, '#c0392b'); const lb = { dodge: ['落物', '#c0392b'], flash: ['停电', '#3a3048'], subway: ['地铁', '#4f8fdc'] }[o.mg] || ['!', '#c0392b']; PX.R(ctx, sx - 4, y - 28, 24, 9, lb[1]); PX.text(ctx, lb[0], sx - 3, y - 29, 8, '#fff6dc'); } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
+  if (!R.boss && R.t < 4) { const gxp = Math.round(PLAYER_X + 70 + R.t * 70), gb = gh(R.dist + gxp + 11); ctx.drawImage(PX.person('club', 'run', Math.floor(t / 80) % 6), gxp, Math.round(GY - gb - PX.SH + 1)); if (R.t < 2.2) { PX.R(ctx, gxp - 2, GY - gb - 52, 30, 12, '#1d1424'); PX.R(ctx, gxp - 1, GY - gb - 51, 28, 10, '#fff'); PX.text(ctx, '嘘…', gxp + 4, GY - gb - 53, 10, '#5a4a6c'); } }
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
   if (!blink) {
     let im;
@@ -694,7 +698,7 @@ function ladderPad(first) {
     <div class="tiles">${tiles.map(x => `<button class="tile" data-t="${esc(x.t)}">${esc(x.t)}</button>`).join('')}</div></div>`;
   LD.t0 = performance.now(); LD.waiting = !!first;
   pad.querySelectorAll('.tile').forEach(b => b.onclick = () => tapTile(b));
-  if (first) say([{ who: 'minhao', t: '결승 탑이다! 조각을 순서대로 눌러서 문장을 만들면 한 층씩 올라가. 꼭대기에서 사건의 진실을 외치는 거야!' }]).then(() => { LD.t0 = performance.now(); LD.waiting = false; });
+  if (first) say([{ who: 'minhao', t: STORY.scene.ladder + ' 조각을 순서대로 눌러 문장을 만들면 한 층씩 올라가!' }]).then(() => { LD.t0 = performance.now(); LD.waiting = false; });
 }
 async function tapTile(b) {
   if (LD.done || b.classList.contains('used')) return;
@@ -745,28 +749,31 @@ async function ladderTop() {
   speak(last);
   await new Promise(res => pad.querySelector('.go').onclick = () => { speak(last); res(); });
   await sleep(600);
-  if (CHECK[LD.cs.no]) startCheck(LD.cs); else caseSolved();
+  const sc = STORY.cases[LD.cs.no], f = LD.cs.friend;
+  if (sc) await say([{ t: '✨ ' + sc.back, look: f.look }], { who: [`${f.name} (${f.ko})`, f.look] });
+  if (CHECK[LD.cs.no]) { await say([{ who: 'minhao', t: STORY.scene.escaped }]); startCheck(LD.cs); } else caseSolved();
 }
 
 /* ───────── 🛂 검문소: 통행증 검사 (페이퍼즈 플리즈 느낌) ───────── */
 let CK = null;
-async function startCheck(cs) {
+async function startCheck(cs, retry) {
   go('check'); Sound.bgm('check');
-  const data = CHECK[cs.no];
-  CK = { cs, data, i: -1, ok: 0, warn: 0, walk: 0, out: 0, outDir: 1, bg: null };
+  const data = CHECK[cs.no], prev = CK && CK.cs === cs ? CK : null;
+  CK = { cs, data, i: -1, ok: 0, warn: prev ? prev.warn : 0, tries: prev && retry ? prev.tries + 1 : 1, badge: 3, walk: 0, out: 0, outDir: 1, bg: null };
   { const th = ART.THEMES[cs.theme](), [c, g] = PX.mk(W, H); th.sky(g); g.drawImage(th.layers[0].c, 0, 0); if (th.layers[1]) g.drawImage(th.layers[1].c, 0, 0); CK.bg = c; }
-  await say([{ who: 'minhao', t: '마지막은 검문소야! 미스터리 클럽 멤버가 사람들 사이에 숨어 있대.' },
-    { who: 'minhao', t: '📒 수첩의 규칙과 🪪 통행증을 꼼꼼히 비교하고, 말하는 것도 잘 들어 봐. 맞으면 通过(통과), 이상하면 可疑(수상해요) 도장!' }]);
+  if (!retry) await say(STORY.check.intro.map(l => ({ ...l })));
+  else await say([{ who: 'police', t: '다시 해 보자, 탐정! 이번엔 규칙과 말을 하나하나 비교해 봐. 배지 3개를 다시 줄게.' }]);
   nextSuspect();
 }
+const badgeHTML = () => `<span class="badges">${'🛡'.repeat(CK.badge)}<i>${'🛡'.repeat(3 - CK.badge)}</i></span>`;
 function nextSuspect() {
   CK.i++;
   if (CK.i >= CK.data.people.length) return checkEnd();
   const p = CK.data.people[CK.i], rules = CK.data.rules.filter(r => r[3] <= CK.i), fresh = CK.data.rules.filter(r => r[3] === CK.i);
-  CK.walk = performance.now(); CK.out = 0; CK.done = false; [0, 180, 360].forEach(d => setTimeout(() => Sound.sfx('step'), d));
+  CK.walk = performance.now(); CK.out = 0; CK.done = false; CK.angry = 0; [0, 180, 360].forEach(d => setTimeout(() => Sound.sfx('step'), d));
   const docRows = Object.entries(p.doc).map(([k, v]) => { const [zh, ko] = v.split('|'); return `<div class="drow"><span>${esc(k)}<small>${esc(DOC_FIELD[k] || '')}</small></span><b>${esc(zh)}${set.ko ? `<small>${esc(ko)}</small>` : ''}</b></div>`; }).join('');
   pad.innerHTML = `<div class="panel ck">
-    <div class="ptitle">🛂 검문소 ${CK.i + 1} / ${CK.data.people.length} <span class="small">⚠ 경고 ${CK.warn}</span></div>
+    <div class="ptitle">🛂 검문소 ${CK.i + 1} / ${CK.data.people.length} ${badgeHTML()}</div>
     <div class="rulebook"><div class="rh">📒 오늘의 규칙</div>${rules.map(r => `<div class="rule ${fresh.includes(r) ? 'new' : ''}" data-say="${esc(r[0])}">${fresh.includes(r) ? '<em>NEW</em>' : '•'} <span class="zh">${esc(r[0])}</span>${set.py ? `<small class="py">${esc(r[1])}</small>` : ''}${set.ko ? `<small>${esc(r[2])}</small>` : ''}</div>`).join('')}</div>
     <div class="pass"><div class="ph">🪪 通行证 · 통행증</div><div class="drow"><span>姓名<small>이름</small></span><b>${esc(p.n)}</b></div>${docRows}<div class="stampmark"></div></div>
     <div class="talk" data-say="${esc(p.say[0])}">💬 <span class="zh">${esc(p.say[0])}</span> 🔊${set.py ? `<small class="py">${esc(p.say[1])}</small>` : ''}${set.ko ? `<small>${esc(p.say[2])}</small>` : ''}</div>
@@ -780,26 +787,52 @@ function nextSuspect() {
 }
 async function judge(v) {
   if (CK.done) return; CK.done = true;
-  const p = CK.data.people[CK.i], right = (v === 1) === !!p.ok;
+  const p = CK.data.people[CK.i], right = (v === 1) === !!p.ok, last = CK.i === CK.data.people.length - 1;
   const sm = pad.querySelector('.stampmark'); sm.className = 'stampmark on ' + (v ? 'ok' : 'no'); sm.textContent = v ? '通过' : '可疑';
   pad.querySelectorAll('.stamp').forEach(b => b.disabled = true);
   Sound.sfx('stamp');
   const vd = pad.querySelector('.verdict');
-  if (right) { CK.ok++; await sleep(250); Sound.sfx('good'); vd.className = 'verdict good'; vd.innerHTML = `⭕ 정확해요! ${esc(p.why)}`; }
-  else { CK.warn++; await sleep(250); Sound.sfx('warn'); vd.className = 'verdict bad'; vd.innerHTML = `<b>⚠ 경고장!</b> ${p.ok ? '이 사람은 통과해도 돼요.' : '이 사람은 수상해요!'} ${esc(p.why)}`; }
-  if (CK.i === CK.data.people.length - 1 && !p.ok) { if (right) Sound.sfx('caught'); SPEAK = { look: 'club', mood: right ? 'surprise' : 'happy', emo: right ? '!' : '♪', t0: performance.now(), dur: 900 }; }
-  vd.insertAdjacentHTML('beforeend', '<div class="row"><button class="big go">다음 ▶</button></div>');
+  await sleep(250);
+  if (right) {
+    CK.ok++; Sound.sfx(last ? 'caught' : 'good'); vd.className = 'verdict good';
+    vd.innerHTML = last ? `🚨 잡았다! 변장한 <b>무음단 단원</b>이었어요! ${esc(p.why)}` : `⭕ 정확해요! ${esc(p.why)}`;
+    if (last) SPEAK = { look: p.look, mood: 'surprise', emo: '!', t0: performance.now(), dur: 900 };
+  } else {
+    CK.warn++; CK.badge--; Sound.sfx('warn'); vd.className = 'verdict bad';
+    const ttl = pad.querySelector('.ptitle .badges'); if (ttl) ttl.outerHTML = badgeHTML();
+    if (p.ok) {   // 무고한 사람을 잡음
+      const w = STORY.check.wrongInnocent; speak(w[0]); CK.angry = 1; SPEAK = { look: p.look, mood: 'sad', emo: '!', t0: performance.now(), dur: 1800 };
+      vd.innerHTML = `<b>🛡 신뢰 배지 -1</b> 무고한 사람을 잡았어요! "<span class="zh">${esc(w[0])}</span>" (${esc(w[2])})<br>해설: ${esc(p.why)}`;
+    } else {      // 단원을 통과시킴
+      vd.innerHTML = `<b>🛡 신뢰 배지 -1</b> ${esc(STORY.check.wrongPassed)}<br>해설: ${esc(p.why)}`;
+      SPEAK = { look: p.look, mood: 'happy', emo: '♪', t0: performance.now(), dur: 1200 };
+    }
+    speak(p.say[0]);
+  }
+  vd.insertAdjacentHTML('beforeend', `<div class="row"><button class="big go">${CK.badge <= 0 ? '😵 …' : '다음 ▶'}</button></div>`);
   vd.scrollIntoView({ block: 'nearest' });
   await new Promise(res => { const b = vd.querySelector('.go'); b.onclick = res; enterHook = res; });
   enterHook = null; CK.out = performance.now(); CK.outDir = v ? -1 : 1; SPEAK = null;
+  if (CK.badge <= 0) {           // 배지를 모두 잃음 → 단원이 도망 → 처음부터
+    await sleep(400); Sound.sfx('train'); Sound.bgm('fail');
+    const c = card(`<h2>🚆 단원이 도망쳤어요!</h2><div class="t">${esc(STORY.check.fail)}</div><div class="small">틀린 사람의 말은 오답 카드에 남았어요. 규칙 → 통행증 → 하는 말 순서로 천천히 비교해 봐요.</div><div class="row"><button class="big go">🔁 검문 다시 하기</button></div>`);
+    await wait(c); return startCheck(CK.cs, true);
+  }
   await sleep(500);
   nextSuspect();
 }
 async function checkEnd() {
   pad.innerHTML = ''; CK.i = CK.data.people.length;
-  const caught = CK.data.people[CK.data.people.length - 1];
-  await say([{ who: 'minhao', t: CK.ok >= 4 ? `검문소 완벽해! ${CK.ok}/5 정확! 변장한 미스터리 클럽 멤버도 찾아냈어.` : `검문소 ${CK.ok}/5. 경고장 ${CK.warn}장… 그래도 미스터리 클럽 멤버의 정체는 밝혀졌어!` },
-    { who: 'club', look: 'club', zh: ['哎呀，被你发现了！你们真厉害！', 'Āiyā, bèi nǐ fāxiàn le! Nǐmen zhēn lìhai!', '아이고, 들켰다! 너희 정말 대단한걸!'] }], { });
+  const sc = STORY.cases[CK.cs.no], lastP = CK.data.people[CK.data.people.length - 1];
+  const caughtByMe = CK.data.people.length && true;
+  await say([{ who: 'minhao', t: CK.ok >= 4 ? `완벽해! ${CK.ok}/5 정확! 변장한 무음단 단원을 찾아냈어!` : `검문소 ${CK.ok}/5… 배지는 ${CK.badge}개 남았지만, 赵队长 덕분에 단원을 붙잡았어!` },
+    { who: 'club', zh: STORY.check.caught },
+    { who: 'police', t: '단원 주머니에서 쪽지가 나왔어. 또 그 표시야… "嘘".' }]);
+  if (sc && sc.note) {
+    Sound.sfx('paper');
+    const c = card(`<div class="xnote"><div class="xh">🗒 무음단 쪽지 <span>嘘</span></div>${zhBlock(sc.note[0], sc.note[1], sc.note[2], true)}<button class="mini" data-say="${esc(sc.note[0])}">🔊</button></div><div class="row"><button class="big go">쪽지를 수첩에 넣기</button></div>`);
+    speak(sc.note[0]); await wait(c);
+  }
   caseSolved();
 }
 function drawCheck(t) {
@@ -833,6 +866,9 @@ function drawCheck(t) {
   PX.R(ctx, cx - 50, 162, 34, 24, '#fff6dc'); PX.R(ctx, cx - 50, 162, 34, 3, '#e2504c'); for (let k = 0; k < 4; k++) PX.R(ctx, cx - 46, 168 + k * 4, 22 - (k % 2) * 6, 1, '#b0a090');
   PX.R(ctx, cx + 18, 166, 20, 10, '#2a1d24'); PX.R(ctx, cx + 19, 167, 18, 8, '#c0392b');
   PX.R(ctx, cx + 44, 160, 8, 12, '#8a5a30'); PX.R(ctx, cx + 42, 172, 12, 4, '#2a1d24');
+  // 赵队长 (창구 오른쪽)
+  { const pf = SPEAK && SPEAK.look === 'police' ? Math.floor(t / 150) % 2 : 0, px = Math.min(W - 26, wx1 + 12);
+    ctx.drawImage(PX.flip(PX.person('police', pf ? 'talk' : 'stand', pf, pf ? 'talk' : ((t % 3600) < 120 ? 'blink' : undefined))), px, 150 - PX.SH + 11); }
   // 民浩 (책상 옆)
   const mf = SPEAK && SPEAK.look === 'minhao' ? Math.floor(t / 150) % 2 : 0;
   ctx.drawImage(PX.person('minhao', mf ? 'talk' : 'stand', mf, mf ? 'talk' : undefined), Math.max(4, wx0 - 40), 150 - PX.SH + 1 + 10);
@@ -868,7 +904,7 @@ async function caseSolved() {
     <div class="stars">${'★'.repeat(stars)}<span>${'☆'.repeat(3 - stars)}</span></div>
     <div class="crow"><span>탐정</span><b>${esc(save.name)}</b></div><div class="crow"><span>날짜</span><b>${esc(date)}</b></div>
     <div class="crow"><span>단서</span><b>${run.got.length} / 10</b></div><div class="crow"><span>덩어리 관문 (한 번에)</span><b>${gateOk} / ${gatesFirst.length}</b></div>
-    <div class="crow"><span>사다리 툭! (실수 없이 빠르게)</span><b>${LD.tuk} / 6</b></div><div class="crow"><span>🛂 검문소 정확</span><b>${ck.ok} / 5 · 경고 ${ck.warn}</b></div><div class="crow"><span>남은 하트</span><b>${'❤'.repeat(run.hearts)}</b></div>
+    <div class="crow"><span>사다리 툭! (실수 없이 빠르게)</span><b>${LD.tuk} / 6</b></div><div class="crow"><span>🛂 검문소 정확</span><b>${ck.ok} / 5 · 🛡 ${ck.badge == null ? 3 : ck.badge} · 시도 ${ck.tries || 1}</b></div><div class="crow"><span>남은 하트</span><b>${'❤'.repeat(run.hearts)}</b></div>
     ${wc.length || wg.length ? `<div class="weak">🃏 오답 카드 (다음 판에 먼저 나와요): ${wc.map(x => `<span data-say="${esc(x[0])}">${esc(x[0])}</span>`).join(' ')} ${wg.map(g => `<span data-say="${esc(g.stem.replace(/＿+/, g.ans))}">${esc(g.stem.replace(/＿+/, g.ans))}</span>`).join(' ')}</div>` : '<div class="good">👏 오답 카드 없음!</div>'}
     <div class="small">이 화면을 캡처해서 선생님께 보내 주세요. 별 3개가 안 나오면 다시 도전해도 좋아요!</div></div>
     <div class="row"><button class="big go">🗺 지도로</button><button class="btn again">🔁 다시 도전</button></div>`, 'certcard');
