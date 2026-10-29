@@ -32,7 +32,7 @@ button { font-family: var(--ko); color: var(--ink); cursor: pointer; }
 .gban .gs { font-family: var(--zh); font-weight: 700; font-size: calc(5.4 * var(--u)); color: var(--sun); letter-spacing: calc(.3 * var(--u)); }
 .gban .gq .zh { font-size: calc(4.6 * var(--u)); color: var(--sun); } .gban .gq .ko { color: #f0d8c0; font-size: calc(3.2 * var(--u)); }
 .gban .gh { font-size: calc(2.6 * var(--u)); color: #c8b8d8; margin-top: calc(.4 * var(--u)); }
-.glab { transform: translate(-50%, -50%); background: #fff8ec; border: calc(.5 * var(--u)) solid var(--line); border-radius: calc(1.4 * var(--u)); padding: calc(.3 * var(--u)) calc(1.4 * var(--u)); font-family: var(--zh); font-weight: 700; font-size: calc(3.4 * var(--u)); white-space: nowrap; box-shadow: 0 calc(.5 * var(--u)) 0 rgba(0,0,0,.3); }
+.glab { transform: translate(-50%, -50%); background: #fff8ec; border: calc(.5 * var(--u)) solid var(--line); border-radius: calc(1.4 * var(--u)); padding: calc(.3 * var(--u)) calc(1.4 * var(--u)); font-family: var(--zh); font-weight: 900; font-size: calc(5.6 * var(--u)); line-height: 1.2; white-space: nowrap; box-shadow: 0 calc(.5 * var(--u)) 0 rgba(0,0,0,.3); }
 .gflash { left: 50%; top: 38%; transform: translateX(-50%); font-family: var(--zh); font-weight: 700; font-size: calc(5 * var(--u)); padding: calc(1.2 * var(--u)) calc(3 * var(--u)); border-radius: calc(2 * var(--u)); border: calc(.6 * var(--u)) solid var(--line); white-space: nowrap; animation: chip 1.5s forwards; text-align: center; }
 .gflash small { display: block; font-size: calc(3 * var(--u)); font-weight: 500; }
 .gflash.ok { background: #d9f5e5; } .gflash.no { background: #ffe0dc; }
@@ -205,7 +205,7 @@ a { color: #3a7bd5; }
 #pad.asking .cbtn .opt { display: block; font-family: var(--zh); font-size: calc(5 * var(--u)); margin-top: calc(1 * var(--u)); color: var(--ink); }
 #pad.asking .cbtn .opt.x { text-decoration: line-through; opacity: .4; }
 #pad.asking .cbtn .opt.hint { color: #1f7a4a; animation: glow .6s infinite alternate; }
-.glab.up { background: #fff2c4; } .glab.dn { background: #d6ecff; font-size: calc(2.8 * var(--u)); }
+.glab.up { background: #fff2c4; } .glab.dn { background: #d6ecff; font-size: calc(5.2 * var(--u)); }
 
 /* ── 🛂 검문소 ── */
 .ck { gap: calc(1.6 * var(--u)); }
@@ -243,7 +243,7 @@ a { color: #3a7bd5; }
 }
 #pad.asking .cbtn .opt i { display: block; font-style: normal; font-family: var(--ko); font-weight: normal; font-size: calc(2.4 * var(--u)); color: #5a4a5c; }
 #pad.asking .cbtn .opt.pick { color: #1f5aa8; text-decoration: underline; }
-.coinlab { transform: translate(-50%, -50%); font-family: var(--zh); font-weight: 700; font-size: calc(3.2 * var(--u)); color: #5a3a10; white-space: nowrap; text-shadow: 0 0 calc(.6 * var(--u)) #fff6dc; pointer-events: none; }
+.coinlab { transform: translate(-50%, -100%); font-family: var(--zh); font-weight: 900; font-size: calc(5.6 * var(--u)); line-height: 1.15; color: #3a2410; background: #fff6dc; border: calc(.5 * var(--u)) solid #c48a18; border-radius: calc(1.4 * var(--u)); padding: 0 calc(1.2 * var(--u)); white-space: nowrap; pointer-events: none; box-shadow: 0 calc(.5 * var(--u)) 0 rgba(0,0,0,.25); }
 .stlab { transform: translate(-50%, -100%); pointer-events: auto; font-family: var(--zh); font-weight: 700; font-size: calc(3.4 * var(--u)); padding: calc(.6 * var(--u)) calc(1.6 * var(--u)); background: #fff; border: calc(.5 * var(--u)) solid #0e1424; border-radius: calc(1.4 * var(--u)); white-space: nowrap; cursor: pointer; box-shadow: 0 calc(.6 * var(--u)) 0 #0e1424; }
 .stlab.on { background: #d9f5e5; } .stlab.fixed { background: #ffd36e; pointer-events: none; }
 .stlab.bad { background: #ffd2cc; animation: shake .3s; }
@@ -277,3 +277,4 @@ a { color: #3a7bd5; }
 .wlab { transform: translate(-50%, -100%); font-family: var(--zh); font-weight: 700; font-size: calc(3.4 * var(--u)); background: #fff; border: calc(.5 * var(--u)) solid #1d1424; border-radius: calc(1.2 * var(--u)); padding: 0 calc(1.2 * var(--u)); white-space: nowrap; pointer-events: none; transition: opacity .1s; }
 .wlab.civ { background: #d9f5e5; }
 #pad .mbtn { position: static; margin-top: calc(2 * var(--u)); }
+.lk span { display: block; font-size: calc(2.6 * var(--u)); color: #7a6a5a; }

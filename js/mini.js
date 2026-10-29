@@ -9,7 +9,7 @@ const MINI = (() => {
   SPR.can = (() => { const [c, g] = PX.mk(9, 12); PX.R(g, 1, 1, 7, 10, '#e2504c'); PX.R(g, 1, 1, 7, 1, '#c8c8d0'); PX.R(g, 1, 10, 7, 1, '#c8c8d0'); PX.R(g, 2, 4, 5, 3, '#fff6dc'); PX.R(g, 6, 2, 1, 8, '#ff8a7a'); return PX.outline(c); })();
   SPR.peel = (() => { const [c, g] = PX.mk(14, 10); PX.line(g, 2, 8, 6, 2, '#f2c14e', 2); PX.line(g, 7, 2, 12, 8, '#f2c14e', 2); PX.line(g, 6, 2, 7, 8, '#e0a830', 2); PX.R(g, 6, 0, 2, 2, '#6a4020'); return PX.outline(c); })();
   SPR.bottle = (() => { const [c, g] = PX.mk(7, 14); PX.R(g, 2, 0, 3, 4, '#5fae6e'); PX.R(g, 1, 4, 5, 9, '#4f9450'); PX.R(g, 2, 5, 1, 7, '#9fe0a8'); PX.R(g, 2, 0, 3, 1, '#c8c8d0'); return PX.outline(c); })();
-  SPR.coin = [0, 1, 2, 3].map(f => { const [c, g] = PX.mk(22, 22); const w = [10, 7, 3, 7][f]; PX.ellipse(g, 11, 11, w, 10, '#c48a18'); PX.ellipse(g, 11, 11, Math.max(1, w - 1), 9, '#f2c14e'); if (w > 4) PX.ellipse(g, 11, 11, w - 3, 7, '#ffd36e'); PX.R(g, 11 - Math.floor(w / 2), 4, 2, 2, '#fff6dc'); return PX.outline(c); });
+  SPR.coin = [0, 1, 2, 3].map(f => { const [c, g] = PX.mk(14, 14); const w = [6, 4, 2, 4][f]; PX.ellipse(g, 7, 7, w, 6, '#c48a18'); PX.ellipse(g, 7, 7, Math.max(1, w - 1), 5, '#f2c14e'); if (w > 3) PX.ellipse(g, 7, 7, w - 2, 3, '#ffd36e'); PX.R(g, 7 - Math.floor(w / 2), 2, 1, 1, '#fff6dc'); return PX.outline(c); });
   const JUNK = ['poop', 'poop', 'stone', 'can', 'peel', 'bottle'];
 
   let D = null, CUR = null;
@@ -51,7 +51,7 @@ const MINI = (() => {
     if (Math.random() < coinP) {
       const right = Math.random() < .5, ci = right ? D.tgt[D.ti] : pick(D.cs.clues.map((c, i) => i).filter(i => i !== D.tgt[D.ti]));
       const lab = el(`<div class="coinlab">${esc(D.cs.clues[ci][0])}</div>`); ov.appendChild(lab);
-      D.items.push({ k: 'coin', ci, x, y: 30, vy: 34 + Math.random() * 14, lab, w: 22, h: 22 });
+      D.items.push({ k: 'coin', ci, x, y: 30, vy: 34 + Math.random() * 14, lab, w: 14, h: 14 });
     } else {
       const k = pick(JUNK), s = SPR[k];
       D.items.push({ k, x, y: 30, vy: 60 + Math.random() * 40 + Math.min(50, D.t * 2), spin: Math.random() * 6, w: s.width, h: s.height });
@@ -119,7 +119,7 @@ const MINI = (() => {
     D.items.forEach(it => { if (it.gone) return; const k = Math.max(0, Math.min(1, (it.y - 30) / (GY - 50))); PX.ellipse(ctx, Math.round(it.x + it.w / 2), GY + 1, Math.round(2 + k * it.w / 2.2), 1, it.k === 'coin' ? 'rgba(242,193,78,.5)' : 'rgba(0,0,0,.25)'); });
     // 떨어지는 것들
     D.items.forEach(it => {
-      if (it.k === 'coin') { if (!it.gone) { ctx.drawImage(SPR.coin[Math.floor(t / 120 + it.x) % 4], Math.round(it.x), Math.round(it.y)); if (it.lab) { it.lab.style.left = gx(it.x + 11) + 'px'; it.lab.style.top = gx(it.y + 11) + 'px'; } } }
+      if (it.k === 'coin') { if (!it.gone) { ctx.drawImage(SPR.coin[Math.floor(t / 120 + it.x) % 4], Math.round(it.x), Math.round(it.y)); if (it.lab) { it.lab.style.left = gx(it.x + 7) + 'px'; it.lab.style.top = gx(it.y - 1) + 'px'; } } }
       else if (it.land > 0) { ctx.globalAlpha = Math.min(1, it.land * 2); ctx.drawImage(SPR[it.k], Math.round(it.x), Math.round(it.ly)); ctx.globalAlpha = 1; if (it.k === 'poop') { PX.R(ctx, it.x - 2, GY - 1, it.w + 4, 2, '#8a5a30'); } }
       else ctx.drawImage(SPR[it.k], Math.round(it.x), Math.round(it.y));
     });

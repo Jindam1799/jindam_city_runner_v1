@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.8.0 (2026.10.29)';
+const APP_VERSION = 'v0.8.1 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -117,7 +117,8 @@ function goLandscape() {
   try { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen && matchMedia('(pointer: coarse)').matches) d.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {}); } catch (e) {}
 }
 const LOOKS = ['det1', 'det2', 'det3', 'det4'];
-function lookPicker() { return `<div class="looks">${LOOKS.map(k => `<button class="lk ${PL() === k ? 'on' : ''}" data-l="${k}"><img src="${PX.faceURL(k, 'happy')}"></button>`).join('')}</div>`; }
+const LOOK_TAG = { det1: '남', det2: '남', det3: '여', det4: '여' };
+function lookPicker() { return `<div class="looks">${LOOKS.map(k => `<button class="lk ${PL() === k ? 'on' : ''}" data-l="${k}"><img src="${PX.faceURL(k, 'happy')}"><span>${LOOK_TAG[k]}</span></button>`).join('')}</div>`; }
 function bindLookPicker(c) { c.querySelectorAll('.lk').forEach(b => b.onclick = () => { save.look = b.dataset.l; persist(); c.querySelectorAll('.lk').forEach(x => x.classList.toggle('on', x === b)); Sound.sfx('sel'); }); }
 async function prologue() {
   go('office'); Sound.bgm('map');
