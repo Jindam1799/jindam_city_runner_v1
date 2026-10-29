@@ -12,14 +12,22 @@ const MINI = (() => {
   SPR.coin = [0, 1, 2, 3].map(f => { const [c, g] = PX.mk(14, 14); const w = [6, 4, 2, 4][f]; PX.ellipse(g, 7, 7, w, 6, '#c48a18'); PX.ellipse(g, 7, 7, Math.max(1, w - 1), 5, '#f2c14e'); if (w > 3) PX.ellipse(g, 7, 7, w - 2, 3, '#ffd36e'); PX.R(g, 7 - Math.floor(w / 2), 2, 1, 1, '#fff6dc'); return PX.outline(c); });
   const JUNK = ['poop', 'poop', 'stone', 'can', 'peel', 'bottle'];
 
-  let D = null, CUR = null;
-  function backToRun() { CUR = null; go('run'); Sound.bgm(R.boss ? 'hq' : R.cs.theme); runPad(); setTop(); R.gateNow = null; }
+  let D = null, CUR = null, CD = 0;
+  const stars = miss => miss === 0 ? 3 : miss <= 2 ? 2 : 1;
+  const rank = miss => '★'.repeat(stars(miss)) + '☆'.repeat(3 - stars(miss));
+  function burst(x, y, col) { const d = el(`<div class="burst" style="left:${gx(x)}px;top:${gx(y)}px;--c:${col}"></div>`); ov.appendChild(d); setTimeout(() => d.remove(), 500); }
+  /* 3·2·1 시작! (이 동안은 게임이 멈춰요) */
+  async function countdown() {
+    CD = performance.now() + 2600;
+    for (const t of ['3', '2', '1', '开始！']) { const d = el(`<div class="cdown">${t}</div>`); ov.appendChild(d); Sound.sfx(t.length > 1 ? 'good' : 'blip'); if (t.length > 1) speak('开始'); await sleep(t.length > 1 ? 500 : 700); d.remove(); }
+    CD = 0;
+  }
+  function backToRun() { CUR = null; go('run'); Sound.bgm(R.boss ? 'hq' : R.cs.theme); runPad(); setTop(); }
   /* ── 골목 피하기 시작 ── */
   async function dodge(cs, run) {
     go('mini'); Sound.bgm('dodge'); CUR = 'dodge';
-    const pool = cs.clues.map((c, i) => i);
-    const targets = shuffle(pool).slice(0, 3);
-    D = { cs, run, t: 0, x: W / 2 - 11, dir: 0, face: 1, items: [], spawn: .6, tgt: targets, ti: 0, got: 0, need: 3, done: false, hurtT: 0, inv: 0, end: 0, wins: [], miss: 0 };
+    const st = pick(cs.ladder.filter(l => l.t.length >= 2 && l.t.length <= 3)) || cs.ladder[1];
+    D = { cs, run, t: 0, x: W / 2 - 11, dir: 0, face: 1, items: [], spawn: .6, st, toks: st.t, ti: 0, got: 0, need: st.t.length, done: false, hurtT: 0, inv: 0, end: 0, wins: [], miss: 0, combo: 0 };
     for (let i = 0; i < 8; i++) D.wins.push({ x: 14 + i * ((W - 40) / 7), who: pick(['auntie', 'uncle', 'grandpa', 'student']), show: 0 });
     pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">🎯 0/3</span><span id="dt"></span></div><div id="gq" class="on"></div><div id="msg"></div></div>
       <div class="ctrl"><button class="cbtn slide" id="bL">◀<small>왼쪽</small></button><button class="cbtn jump" id="bR">▶<small>오른쪽</small></button></div>
@@ -30,28 +38,29 @@ const MINI = (() => {
     if (!save.tutDodge) {
       save.tutDodge = 1; persist();
       const c = card(`<h2>🏚 골목 이벤트!</h2><div class="t">윗집 창문에서 <b>💩 똥, 돌, 쓰레기</b>가 떨어져요!</div>
-        <div class="small" style="margin:1em 0;font-size:1.1em">◀ ▶ 로 왔다 갔다 피하고,<br>🪙 <b>위에 적힌 뜻과 같은 단어 동전</b>만 받아요!</div>
+        <div class="small" style="margin:1em 0;font-size:1.1em">◀ ▶ 로 왔다 갔다 피하고,<br>🪙 위의 뜻이 되도록 <b>덩어리 조각 동전을 순서대로</b> 받아요!</div>
         <div class="t">땅의 그림자를 보면 어디로 떨어질지 알 수 있어요.</div><div class="row"><button class="big go">좋아, 피해 보자!</button></div>`);
       await wait(c);
     }
+    await countdown();
   }
   function hud() {
     const h = $('#hearts'); if (!h) return;
     h.innerHTML = '❤'.repeat(Math.max(0, R.hearts)) + '<span class="off">' + '❤'.repeat(3 - Math.max(0, R.hearts)) + '</span>';
-    $('#dg').textContent = `🎯 ${D.got}/${D.need}`;
+    $('#dg').textContent = `🪙 ${D.got}/${D.need}`;
   }
   function prompt() {
-    const c = D.cs.clues[D.tgt[D.ti]];
-    $('#gq').innerHTML = `🪙 「${esc(c[2])}」 단어 동전을 받아요!${set.py ? ` <small>힌트: ${esc(c[1])}</small>` : ''}`;
+    $('#gq').innerHTML = `🪙 "${esc(D.st.ko)}" <span class="slots2">${D.toks.map((t, i) => `<i class="${i < D.ti ? 'on' : i === D.ti ? 'nx' : ''}">${i < D.ti ? esc(t) : '?'}</i>`).join('')}</span> 순서대로 받아요!`;
   }
   function spawn() {
     const x = 6 + Math.random() * (W - 30), win = D.wins.reduce((a, b) => Math.abs(b.x - x) < Math.abs(a.x - x) ? b : a);
     win.show = .8;
     const coinP = D.items.filter(i => i.k === 'coin').length < 2 ? .42 : .1;
     if (Math.random() < coinP) {
-      const right = Math.random() < .5, ci = right ? D.tgt[D.ti] : pick(D.cs.clues.map((c, i) => i).filter(i => i !== D.tgt[D.ti]));
-      const lab = el(`<div class="coinlab">${esc(D.cs.clues[ci][0])}</div>`); ov.appendChild(lab);
-      D.items.push({ k: 'coin', ci, x, y: 30, vy: 34 + Math.random() * 14, lab, w: 14, h: 14 });
+      const r = Math.random(), need = D.toks[D.ti];
+      const w = r < .45 ? need : r < .7 && D.toks.length > 1 ? pick(D.toks.filter(t => t !== need)) : pick(D.cs.clues.map(c => c[0]).filter(t => !D.toks.includes(t)));
+      const lab = el(`<div class="coinlab">${esc(w)}</div>`); ov.appendChild(lab);
+      D.items.push({ k: 'coin', w, x, y: 30, vy: 30 + Math.random() * 12 + Math.min(20, D.t * .6), lab, w2: 14, w: w, h: 14, cw: 14 });
     } else {
       const k = pick(JUNK), s = SPR[k];
       D.items.push({ k, x, y: 30, vy: 60 + Math.random() * 40 + Math.min(50, D.t * 2), spin: Math.random() * 6, w: s.width, h: s.height });
@@ -68,16 +77,16 @@ const MINI = (() => {
     const px0 = D.x + 6, px1 = D.x + 18, py0 = GY - 30;
     for (const it of D.items) {
       it.y += it.vy * dt; if (it.k !== 'coin') it.vy += 30 * dt;
-      const hit = it.x + it.w - 2 > px0 && it.x + 2 < px1 && it.y + it.h > py0 && it.y < GY;
+      const iw = it.k === 'coin' ? 14 : it.w, hit = it.x + iw - 2 > px0 && it.x + 2 < px1 && it.y + it.h > py0 && it.y < GY;
       if (hit && !it.gone) {
         it.gone = true;
         if (it.k === 'coin') {
-          const ok = it.ci === D.tgt[D.ti], c = D.cs.clues[it.ci];
-          if (ok) { D.got++; Sound.sfx('clue'); speak(c[0]); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1500); if (D.got >= D.need) return finish(); D.ti++; prompt(); }
-          else { D.miss++; Sound.sfx('bad'); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}' · 찾는 건 '${esc(D.cs.clues[D.tgt[D.ti]][2])}'`, 'no', 1800); }
+          const need = D.toks[D.ti], ok = it.w === need, clue = D.cs.clues.find(c => c[0] === it.w);
+          if (ok) { D.got++; D.ti++; D.combo++; Sound.sfx('clue'); speak(it.w); burst(it.x + 7, it.y + 7, '#ffd36e'); msg(`⭕ <b>${esc(D.toks.slice(0, D.ti).join(' '))}</b>${D.combo >= 2 ? ` · 콤보 ×${D.combo}!` : ''}`, 'ok', 1400); prompt(); if (D.got >= D.need) return finish(); }
+          else { D.miss++; D.combo = 0; Sound.sfx('bad'); shake(3, .25); speak(it.w); msg(D.toks.includes(it.w) ? `✖ 「${esc(it.w)}」는 맞지만 순서가 달라요! 다음은 ?번째 조각` : `✖ 「${esc(it.w)}」${clue ? ` (${esc(clue[2])})` : ''}는 이 덩어리에 없어요`, 'no', 1700); }
           hud();
         } else if (D.inv <= 0) {
-          D.inv = 1.1; D.hurtT = .5; R.hearts--; Sound.sfx(it.k === 'poop' ? 'splat' : 'hurt'); hud();
+          D.inv = 1.1; D.hurtT = .5; R.hearts--; D.combo = 0; shake(5, .3); Sound.sfx(it.k === 'poop' ? 'splat' : 'hurt'); hud();
           msg(it.k === 'poop' ? '💩 으악! 똥 맞았다!' : '🪨 아야!', 'no', 1100);
           if (R.hearts <= 0) { D.done = true; clearLabs(); return failRun(); }
         }
@@ -94,9 +103,10 @@ const MINI = (() => {
     Sound.sfx('cheer');
     const bonus = !timeout && R.hearts < 3 && D.miss === 0;
     if (bonus) R.hearts++;
-    msg(timeout ? '⏰ 시간 끝! 골목을 빠져나왔어요' : `🎉 단어 동전 ${D.need}개 성공!${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, 'ok', 2000);
-    R.mini = (R.mini || []).concat({ k: 'dodge', got: D.got, miss: D.miss });
-    await sleep(1600);
+    const full = D.toks.join(''); if (!timeout) speak(full);
+    msg(timeout ? '⏰ 시간 끝! 골목을 빠져나왔어요' : `🎉 <b>${esc(full)}</b> 덩어리 완성! ${rank(D.miss)}${bonus ? ' · 보너스 ❤ +1' : ''}`, 'ok', 2200);
+    R.mini = (R.mini || []).concat({ k: 'dodge', got: D.got, miss: D.miss, stars: timeout ? 1 : stars(D.miss) });
+    await sleep(1800);
     D = null; backToRun();
   }
   function draw(t) {
@@ -149,7 +159,7 @@ const MINI = (() => {
     const h = $('#hearts'); h.innerHTML = '❤'.repeat(Math.max(0, R.hearts)) + '<span class="off">' + '❤'.repeat(3 - Math.max(0, R.hearts)) + '</span>';
   }
   const gameXY = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
-  async function tut(key, html) { if (save[key]) return; save[key] = 1; persist(); const c = card(html + '<div class="row"><button class="big go">시작!</button></div>'); await wait(c); }
+  async function tut(key, html) { if (!save[key]) { save[key] = 1; persist(); const c = card(html + '<div class="row"><button class="big go">시작!</button></div>'); await wait(c); } await countdown(); }
 
   /* ───── 🔦 손전등 단서 찾기: 깜깜한 골목에서 뜻에 맞는 단서 쪽지를 찾아 눌러요 ───── */
   const FLASH = (() => {
@@ -339,9 +349,10 @@ const MINI = (() => {
   async function finishMini(kind, ok, extra, text) {
     Sound.sfx(ok ? 'cheer' : 'bad');
     const bonus = ok && extra.miss === 0 && R.hearts < 3; if (bonus) R.hearts++;
-    msg(`${text}${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, ok ? 'ok' : 'no', 2000);
-    R.mini = (R.mini || []).concat({ k: kind, ...extra });
-    document.querySelectorAll('.mbtn,.wlab,.blab,.mcards,.mconn,.mmaze,.mslide,.mspot').forEach(x => x.remove());
+    const st = ok ? stars(extra.miss || 0) : 1;
+    msg(`${text} ${'★'.repeat(st)}${'☆'.repeat(3 - st)}${bonus ? ' · 보너스 ❤ +1' : ''}`, ok ? 'ok' : 'no', 2200);
+    R.mini = (R.mini || []).concat({ k: kind, ...extra, stars: st });
+    document.querySelectorAll('.mbtn,.wlab,.blab,.mcards,.mconn,.mmaze,.mslide,.mspot,.plab').forEach(x => x.remove());
     await sleep(1700); backToRun();
   }
   const optBtns = (opts, onPick, cls = '') => {
@@ -387,10 +398,10 @@ const MINI = (() => {
       const h = K.holes.find(h => h.who && !h.who.hit && x > h.x - 4 && x < h.x + 30 && y > h.y - 32 && y < h.y + 10);
       if (!h) return;
       const w = h.who; w.hit = K.t;
-      if (!w.gang) { K.miss++; Sound.sfx('bad'); msg('🙂 앗, 시민이에요! 단원만 잡아요', 'no', 1300); return; }
+      if (!w.gang) { K.miss++; Sound.sfx('bad'); shake(2, .15); msg('🙂 앗, 시민이에요! 단원만 잡아요', 'no', 1300); return; }
       const c = K.cs.clues[w.ci];
-      if (w.ci === K.tgt[K.ti]) { K.got++; Sound.sfx('smash'); speak(c[0]); msg(`🚔 잡았다! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1400); if (K.got >= 3) return end(true); K.ti++; prompt(); }
-      else { K.miss++; Sound.sfx('lock'); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
+      if (w.ci === K.tgt[K.ti]) { K.got++; Sound.sfx('smash'); shake(3, .15); burst(h.x + 13, h.y - 14, '#ffd36e'); speak(c[0]); msg(`🚔 잡았다! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1400); if (K.got >= 3) return end(true); K.ti++; prompt(); }
+      else { K.miss++; Sound.sfx('lock'); shake(2, .15); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
     }
     function end(ok) { K.done = true; ov.querySelectorAll('.wlab').forEach(x => x.remove()); const k = K; K = null; finishMini('whack', ok, { got: k.got, miss: k.miss }, ok ? '🎉 단원 3명 체포!' : '⏰ 시간 끝! 단원들이 숨어 버렸어요'); }
     function draw(t) {
@@ -438,7 +449,7 @@ const MINI = (() => {
       if (!A || A.lock) return; A.lock = true;
       const ci = A.queue[0], c = A.cs.clues[ci], ok = A.opts[i] === ci;
       if (ok) { b.classList.add('right'); A.got++; Sound.sfx('ding'); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1300); A.queue.shift(); }
-      else { b.classList.add('wrong'); A.miss++; Sound.sfx('bad'); const rb = [...document.querySelectorAll('.mbtn button')][A.opts.indexOf(ci)]; if (rb) rb.classList.add('right'); msg(`✖ 들린 건 <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'no', 1800); speak(c[0]); A.queue.push(A.queue.shift()); }
+      else { b.classList.add('wrong'); A.miss++; Sound.sfx('bad'); shake(2, .15); const rb = [...document.querySelectorAll('.mbtn button')][A.opts.indexOf(ci)]; if (rb) rb.classList.add('right'); msg(`✖ 들린 건 <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'no', 1800); speak(c[0]); A.queue.push(A.queue.shift()); }
       await sleep(ok ? 1100 : 1900);
       if (!A) return;
       if (A.got >= A.need) { A.done = true; const a = A; A = null; return finishMini('radio', true, { miss: a.miss }, '🎉 방송이 돌아왔어요! 귀가 밝은 탐정!'); }
@@ -543,7 +554,7 @@ const MINI = (() => {
         const w = C.cs.clues[a.d.ci]; msg(`⭕ <b>${esc(w[0])}</b> <span>${esc(w[1])}</span> · ${esc(w[2])}`, 'ok', 1300); speak(w[0]);
         $('#dg').textContent = `🃏 ${C.pairs}/4`;
         if (C.pairs >= 4) { C.done = true; await sleep(900); const k = C; C = null; k.wrap.remove(); return finishMini('cards', true, { miss: Math.max(0, k.miss - 3) }, '🎉 암호를 모두 풀었어요!'); }
-      } else { C.miss++; Sound.sfx('bad'); await sleep(900); [a, c].forEach(x => x.b.classList.remove('up')); }
+      } else { C.miss++; Sound.sfx('bad'); shake(2, .15); await sleep(900); [a, c].forEach(x => x.b.classList.remove('up')); }
       C.lock = false;
     }
     function update(dt) { if (C) C.t += dt; }
@@ -591,8 +602,8 @@ const MINI = (() => {
     }
     function hit(b) {
       b.pop = .3; const c = B.cs.clues[b.ci]; speak(c[0]);
-      if (b.ci === B.tgt[B.ti]) { B.got++; Sound.sfx('pop'); Sound.sfx('clue'); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1300); if (B.got >= 3) return end(true); B.ti++; prompt(); }
-      else { B.miss++; Sound.sfx('pop'); Sound.sfx('bad'); msg(`✖ 앗! <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
+      if (b.ci === B.tgt[B.ti]) { B.got++; Sound.sfx('pop'); Sound.sfx('clue'); burst(b.x, b.y, b.col); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1300); if (B.got >= 3) return end(true); B.ti++; prompt(); }
+      else { B.miss++; Sound.sfx('pop'); Sound.sfx('bad'); shake(3, .2); msg(`✖ 앗! <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
     }
     function end(ok) { B.done = true; ov.querySelectorAll('.blab').forEach(x => x.remove()); const k = B; B = null; finishMini('balloon', ok, { got: k.got, miss: k.miss }, ok ? '🎉 단어 풍선 3개 명중!' : '⏰ 풍선이 다 날아가 버렸어요'); }
     function draw(t) {
@@ -827,7 +838,7 @@ const MINI = (() => {
       if (!S2 || S2.done) return;
       const r = p.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * PW, y = (e.clientY - r.top) / r.height * PH;
       const hit = S2.boxes.find(o => !o.found && x > o.b[0] - 4 && x < o.b[0] + o.b[2] + 4 && y > o.b[1] - 4 && y < o.b[1] + o.b[3] + 4);
-      if (!hit) { S2.miss++; Sound.sfx('bad'); msg('✖ 거기는 똑같아요', 'no', 800); return; }
+      if (!hit) { S2.miss++; Sound.sfx('bad'); shake(2, .12); msg('✖ 거기는 똑같아요', 'no', 800); return; }
       hit.found = true; S2.got++; Sound.sfx('clue');
       S2.wrap.querySelectorAll('.marks').forEach(m => { const d = document.createElement('i'); d.style.left = ((hit.b[0] + hit.b[2] / 2) / PW * 100) + '%'; d.style.top = ((hit.b[1] + hit.b[3] / 2) / PH * 100) + '%'; m.appendChild(d); });
       const c = S2.cs.clues[hit.ci]; speak(c[0]);
@@ -840,10 +851,92 @@ const MINI = (() => {
     return { start, update, draw };
   })();
 
-  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT };
+  /* ───── 📦 덩어리 택배: 컨베이어 위 상자의 빈칸 ＿ 에 맞는 말을, 상자가 끝에 닿기 전에 골라요 (옛 갈림길 문제) ───── */
+  const PARCEL = (() => {
+    let Q = null;
+    const BOX = (() => { const [c, g] = PX.mk(34, 24); PX.R(g, 1, 3, 32, 20, '#c99252'); PX.R(g, 1, 3, 32, 3, '#e0b070'); PX.R(g, 15, 3, 4, 20, '#e8d6a8'); PX.R(g, 1, 22, 32, 1, '#8a5a30'); PX.R(g, 4, 9, 8, 6, '#fff6dc'); PX.R(g, 5, 10, 6, 1, '#8a8a9a'); PX.R(g, 5, 12, 4, 1, '#8a8a9a'); return PX.outline(c); })();
+    const BELT_Y = GY - 72, X0 = 60;
+    function start(cs, run) {
+      go('mini'); CUR = 'parcel'; Sound.bgm('subway');
+      const items = run.boss ? run.quizPool.splice(0, 4) : shuffle(cs.gates.map((g, i) => ({ g, gi: i }))).sort((a, b) => (save.weakGate[cs.no + ':' + b.gi] ? 1 : 0) - (save.weakGate[cs.no + ':' + a.gi] ? 1 : 0));
+      Q = { cs, run, queue: items.slice(), need: items.length, got: 0, miss: 0, tried: new Set(), t: 0, x: W + 10, active: false, fly: null, drop: null };
+      topPad(`📦 0/${Q.need}`);
+      tut('tutParcel', `<h2>📦 덩어리 택배를 지켜라!</h2><div class="t">무음단이 택배 상자에 적힌 말을 지워 버렸어요.</div><div class="small" style="margin:1em 0;font-size:1.1em">상자의 <b>빈칸 ＿</b> 에 들어갈 말을 골라요.<br>상자가 <b>끝에 떨어지기 전에</b> 눌러야 해요!</div><div class="t">틀리거나 늦은 상자는 한 번 더 돌아와요.</div>`).then(round);
+    }
+    const stemOf = g => g.quiz ? g.q : g.stem;
+    const fullOf = g => g.quiz ? g.ans : g.stem.replace(/＿+/, g.ans);
+    function round() {
+      if (!Q) return;
+      const it = Q.queue[0], g = it.g; Q.cur = it;
+      Q.opts = shuffle([g.ans, ...g.wrong.slice(0, 2)]);
+      Q.x = W + 4; Q.speed = (W + 4 - X0) / Math.max(4.5, 8 - Q.got * .8); Q.active = true; Q.lock = false;
+      ov.querySelectorAll('.plab').forEach(x => x.remove());
+      Q.lab = el(`<div class="glab plab">${esc(stemOf(g)).replace(/＿+/, '<u>＿＿</u>')}</div>`); ov.appendChild(Q.lab); Q.lab._k = null;
+      $('#gq').innerHTML = g.quiz ? `📦 <b>${esc(g.ko)}</b> — 알맞은 대답은?` : `📦 <b>${esc(g.ko)}</b> — 빈칸에 들어갈 말은?`;
+      $('#dg').textContent = `📦 ${Q.got}/${Q.need}`;
+      optBtns(Q.opts.map(esc), pickOpt, 'pbtn');
+      Sound.sfx('gate'); if (g.quiz) speak(g.q);
+    }
+    function pickOpt(i, b) { if (!Q || !Q.active || Q.lock) return; resolve(Q.opts[i] === Q.cur.g.ans, false, b); }
+    async function resolve(ok, late, b) {
+      Q.lock = true; Q.active = false;
+      const it = Q.cur, g = it.g, full = fullOf(g), first = !Q.tried.has(it); Q.tried.add(it);
+      if (first) { R.gates.push({ g, ok, first: true }); if (!g.quiz) { if (ok) delete save.weakGate[Q.cs.no + ':' + it.gi]; else save.weakGate[Q.cs.no + ':' + it.gi] = 1; persist(); } }
+      const btns = [...document.querySelectorAll('.mbtn button')], rb = btns[Q.opts.indexOf(g.ans)];
+      if (ok) {
+        b.classList.add('right'); Q.got++; Sound.sfx('ding'); Sound.sfx('stamp'); burst(Q.x + 17, BELT_Y - 12, '#7fd6a8'); speak(full);
+        if (Q.lab) Q.lab.innerHTML = `✅ ${esc(full)}`;
+        msg(`⭕ <b>${esc(full)}</b>${set.py && g.py ? ` <span>${esc(g.py)}</span>` : ''}${set.ko ? ` · ${esc(g.ko)}` : ''}`, 'ok', 1500);
+        Q.fly = { x: Q.x, t: 0 }; Q.queue.shift();
+      } else {
+        if (b) b.classList.add('wrong'); if (rb) rb.classList.add('right'); Q.miss++; Sound.sfx('bad'); shake(3, .2); speak(full);
+        msg(`${late ? '⏰ 늦었어요!' : '✖ 틀렸어요!'} 정답 <b>${esc(full)}</b>${set.py && g.py ? ` <span>${esc(g.py)}</span>` : ''}`, 'no', 2000);
+        Q.drop = { x: Q.x, t: 0 }; Q.queue.push(Q.queue.shift());
+      }
+      $('#dg').textContent = `📦 ${Q.got}/${Q.need}`;
+      await sleep(ok ? 1200 : 2000);
+      if (!Q) return;
+      ov.querySelectorAll('.plab').forEach(x => x.remove()); Q.lab = null; Q.fly = Q.drop = null;
+      if (Q.got >= Q.need) { const q = Q; Q = null; return finishMini('parcel', true, { miss: q.miss }, '🎉 택배 배달 완료! 덩어리 박사!'); }
+      round();
+    }
+    function update(dt) {
+      if (!Q) return; Q.t += dt;
+      if (Q.active && !Q.lock) { Q.x -= Q.speed * dt; if (Q.x <= X0) { Q.x = X0; resolve(false, true, null); } }
+      if (Q.fly) Q.fly.t += dt; if (Q.drop) Q.drop.t += dt;
+    }
+    function draw(t) {
+      if (!Q) return;
+      PX.R(ctx, 0, 0, W, H, '#3d3346'); for (let x = 0; x < W; x += 16) PX.R(ctx, x, 0, 8, GY, '#443a50');
+      // 선반 위 상자들
+      for (let x = 70; x < W - 70; x += 60) { PX.R(ctx, x, 52, 48, 3, '#6a5a6c'); for (let k = 0; k < 3; k++) PX.R(ctx, x + 3 + k * 15, 38, 12, 14, k % 2 ? '#b8844a' : '#c99252'); }
+      // 컨베이어
+      PX.R(ctx, X0 - 4, BELT_Y, W - X0 + 8, 8, '#2a2436'); PX.R(ctx, X0 - 4, BELT_Y, W - X0 + 8, 2, '#5a5468');
+      for (let x = X0; x < W; x += 12) { const o = ((t / 25) | 0) % 12; PX.R(ctx, x - o + 12, BELT_Y + 3, 4, 2, '#4a4458'); }
+      for (let x = X0 + 6; x < W; x += 40) { PX.R(ctx, x, BELT_Y + 8, 4, GY - BELT_Y - 8, '#4a4458'); }
+      // 끝: 쓰레기통 (늦으면 여기로 떨어져요)
+      PX.R(ctx, X0 - 40, GY - 26, 34, 26, '#5a6474'); PX.R(ctx, X0 - 42, GY - 28, 38, 3, '#7a8494'); PX.text(ctx, '✕', X0 - 28, GY - 21, 9, '#e2504c');
+      // 위쪽: 트럭 (맞히면 날아가요)
+      PX.R(ctx, W - 60, 6, 56, 26, '#e8e0d0'); PX.R(ctx, W - 60, 6, 56, 3, '#d0702a'); PX.text(ctx, '快递', W - 46, 11, 9, '#d0702a');
+      // 상자
+      let bx = Q.x, by = BELT_Y - 24;
+      if (Q.fly) { const k = Math.min(1, Q.fly.t / .8); bx = Q.fly.x + (W - 48 - Q.fly.x) * k; by = BELT_Y - 24 - Math.sin(k * Math.PI) * 40 - k * (BELT_Y - 40); }
+      if (Q.drop) { const k = Math.min(1, Q.drop.t / .5); bx = Q.drop.x - k * 34; by = BELT_Y - 24 + k * k * (GY - BELT_Y - 4); }
+      if (Q.active || Q.fly || Q.drop) {
+        ctx.drawImage(BOX, Math.round(bx), Math.round(by));
+        const near = Q.active && Q.x < X0 + 70 && Math.floor(t / 150) % 2; if (near) PX.R(ctx, Math.round(bx), Math.round(by) - 3, 34, 2, '#e2504c');
+        if (Q.lab) { const lw = Q.lab._w || (Q.lab._w = Q.lab.offsetWidth), X = Math.round(Math.max(lw / 2 + 4, Math.min(gx(W) - lw / 2 - 4, gx(bx + 17)))), Y = Math.round(gx(by - 12)), k2 = X + ',' + Y; if (Q.lab._k !== k2) { Q.lab._k = k2; Q.lab.style.transform = `translate3d(${X}px, ${Y}px, 0) translate(-50%, -50%)`; } }
+      }
+      for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
+      ctx.drawImage(PX.person(PL(), Q.lock ? 'cheer' : 'think', Math.floor(t / 300) % 2), 2, GY - PX.SH + 1);
+    }
+    return { start, update, draw };
+  })();
+
+  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT, parcel: PARCEL };
   return {
-    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
-    update(dt) { if (CUR && GAMES[CUR]) GAMES[CUR].update(dt); },
+    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT, parcel: PARCEL }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
+    update(dt) { if (CD || !CUR || !GAMES[CUR]) return; GAMES[CUR].update(dt); },
     draw(t) { if (CUR && GAMES[CUR]) GAMES[CUR].draw(t); },
     key(e, d) { if (CUR && GAMES[CUR].key) GAMES[CUR].key(e, d); },
     pointer(e, k) { if (CUR && GAMES[CUR].pointer) GAMES[CUR].pointer(e, k); },
