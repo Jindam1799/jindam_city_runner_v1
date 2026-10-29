@@ -241,3 +241,5 @@ a { color: #3a7bd5; }
   .ck .pass .ph { grid-column: 1 / -1; }
   .ck .drow b { font-size: calc(3.6 * var(--u)); }
 }
+#pad.asking .cbtn .opt i { display: block; font-style: normal; font-family: var(--ko); font-weight: normal; font-size: calc(2.4 * var(--u)); color: #5a4a5c; }
+#pad.asking .cbtn .opt.pick { color: #1f5aa8; text-decoration: underline; }

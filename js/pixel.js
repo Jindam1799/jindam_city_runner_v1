@@ -65,6 +65,7 @@ const PX = (() => {
     auntie:   { hair: '#2b1a20', hairL: '#4e3240', skin: '#f6c7a8', skinD: '#d89a80', coat: '#9b59b6', coatD: '#6f3a88', coatL: '#c38fd6', scarf: '#ffd36e', scarfD: '#d6a43c', pants: '#3a2a48', pantsD: '#261a32', shoe: '#3a2a48', shoeD: '#9b59b6', style: 'bob' },
     grandpa:  { hair: '#d8d4dc', hairL: '#ffffff', skin: '#efbf98', skinD: '#c98f6c', coat: '#8a6a4a', coatD: '#654a30', coatL: '#b08e6a', scarf: '#6a8a5a', scarfD: '#4a6a3a', pants: '#4a4048', pantsD: '#332a32', shoe: '#2a2024', shoeD: '#4a3a30', style: 'old' },
     student:  { hair: '#1f1a26', hairL: '#3d3350', skin: '#f8cfb0', skinD: '#dca184', coat: '#3fa7a0', coatD: '#2a7a74', coatL: '#7fd6cc', scarf: '#ffffff', scarfD: '#d0d0d8', pants: '#2f3550', pantsD: '#1f2438', shoe: '#f4f1ea', shoeD: '#3fa7a0', style: 'spiky' },
+    police:   { hair: '#1f1a26', hairL: '#3d3350', skin: '#f2c09a', skinD: '#d08f6e', coat: '#2f4f8f', coatD: '#1f3566', coatL: '#5a7cc0', scarf: '#e8e8f0', scarfD: '#b8bccc', pants: '#1f2a48', pantsD: '#141c32', shoe: '#16121e', shoeD: '#2a2436', style: 'cap' },
     club:     { hair: '#1a1420', hairL: '#2e2638', skin: '#e8b892', skinD: '#c48c6c', coat: '#2e2a3a', coatD: '#1c1826', coatL: '#4a4458', scarf: '#c0392b', scarfD: '#8a2a24', pants: '#24202e', pantsD: '#16121e', shoe: '#16121e', shoeD: '#c0392b', style: 'club' },
     teacher:  { hair: '#2b1a14', hairL: '#4e3226', skin: '#f8cfb0', skinD: '#dca184', coat: '#ff9466', coatD: '#d0663e', coatL: '#ffbc94', scarf: '#fff6dc', scarfD: '#d8ccb0', pants: '#5d4a8c', pantsD: '#40326a', shoe: '#40326a', shoeD: '#ff9466', style: 'long' }
   };
@@ -94,6 +95,7 @@ const PX = (() => {
     if (L.style === 'flower') { R(g, cx - 4, cy - 8, 2, 2, '#ff6f91'); R(g, cx, cy - 9, 2, 2, '#ffd36e'); R(g, cx + 3, cy - 8, 2, 2, '#fff'); P(g, cx - 3, cy - 7, '#ffd36e'); }
     if (L.style === 'hat') { [6, 8, 10, 12, 12].forEach((w, i) => R(g, cx - Math.floor(w / 2), cy - 10 + i, w, 1, '#e2504c')); R(g, cx - 6, cy - 5, 13, 2, '#f2f2f2'); R(g, cx - 3, cy - 9, 2, 3, '#ff8a7a'); R(g, cx + 1, cy - 9, 1, 3, '#b83a36'); disc(g, cx, cy - 12, 2, '#f2f2f2'); }
     if (L.style === 'pigtail') { R(g, cx - 2, cy - 7, 2, 1, '#ffd36e'); }
+    if (L.style === 'cap') { R(g, cx - 6, cy - 9, 11, 4, '#1f3566'); R(g, cx - 5, cy - 10, 9, 1, '#2f4f8f'); R(g, cx - 6, cy - 5, 14, 2, '#141c32'); R(g, cx - 1, cy - 9, 3, 3, '#f2c14e'); P(g, cx, cy - 8, '#fff6dc'); }
     if (L.style === 'old') { R(g, cx - 4, cy - 7, 8, 1, L.skin); R(g, cx - 2, cy - 6, 6, 1, L.skin); R(g, cx + 2, cy + 3, 4, 1, L.hair); }
     if (L.style === 'club') { R(g, cx - 7, cy - 6, 15, 2, '#16121e'); [8, 10, 10].forEach((w, i) => R(g, cx - 5, cy - 11 + i, w + 2, 1, '#2a2436')); R(g, cx - 5, cy - 8, 12, 1, '#c0392b'); }
     // 눈 (오른쪽을 봄) — mood: ok | happy | hurt | blink | surprise | sad, 'talk'가 붙으면 입을 벌림

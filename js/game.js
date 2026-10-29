@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.3.1 (2026.10.29)';
+const APP_VERSION = 'v0.4.0 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -271,11 +271,11 @@ function makeTerrain(L, gatesAt) {
   const pts = [[-200, 0], [320, 0]]; let x = 320, h = 0;
   const LV = [0, 14, 28, 42];
   while (x < L + 400) {
-    const gateSoon = gatesAt.some(g => g > x && g < x + 520);
+    const gateSoon = gatesAt.some(g => g + FORK_L > x && g < x + 520);
     let nh = pick(LV.filter(v => v !== h && Math.abs(v - h) <= 28 && (!gateSoon || v < h || v <= 14)));
     if (nh === undefined) { x += 50; pts.push([x, h]); continue; }
     const len = Math.abs(nh - h) * 3.2;
-    if (gatesAt.some(g => g > x - 120 && g < x + len + 120) || x + len > L - 40) { x += 50; pts.push([x, h]); continue; }
+    if (gatesAt.some(g => g + FORK_L + 120 > x && g - 120 < x + len) || x + len > L - 40) { x += 50; pts.push([x, h]); continue; }
     x += len; h = nh; pts.push([x, h]);
     x += 160 + Math.random() * 240; pts.push([x, h]);
   }
@@ -290,10 +290,10 @@ function gh(x) {
 const flatAt = (x, w) => Math.abs(gh(x - 4) - gh(x + w + 4)) < .5 && Math.abs(gh(x + w / 2) - gh(x)) < .5;
 const pitAt = x => R.pits.find(p => !p.filled && x > p.x + 2 && x < p.x + p.w - 2);
 function buildLevel(cs, boss) {
-  const L = boss ? 3600 : 2700, objs = [];
-  const gatesAt = boss ? Array.from({ length: 8 }, (_, i) => 320 + i * 400) : [.2, .41, .62, .82].map(f => f * L);
+  const L = boss ? 4500 : 2900, objs = [];
+  const gatesAt = boss ? Array.from({ length: 8 }, (_, i) => 360 + i * 510) : [.17, .39, .61, .81].map(f => f * L);
   R.terr = makeTerrain(L, gatesAt); R.pits = [];
-  const near = (x, d = 120) => gatesAt.some(g => Math.abs(g - x) < d);
+  const near = (x, d = 120) => gatesAt.some(g => x > g - d && x < g + FORK_L + d);
   let x = 260, n = 0;
   const lows = THEME.low, highs = THEME.high;
   while (x < L - 80) {
@@ -309,7 +309,7 @@ function buildLevel(cs, boss) {
   }
   if (!boss) {
     const order = shuffle(cs.clues.map((c, i) => i)).sort((a, b) => (save.weakClue[cs.no + ':' + b] ? 1 : 0) - (save.weakClue[cs.no + ':' + a] ? 1 : 0));
-    order.forEach((ci, k) => { const cx = 200 + (k + .5) * (L - 300) / 10 + (Math.random() * 40 - 20); const ob = objs.find(o => Math.abs(o.x - cx) < 28 && o.k !== 'pit'); objs.push({ k: 'clue', x: cx, hy: ob ? (ob.h > 40 ? 70 : 58) : (Math.random() < .5 ? 14 : 46), ci }); });
+    order.forEach((ci, k) => { let cx = 200 + (k + .5) * (L - 300) / 10 + (Math.random() * 40 - 20); const gz = gatesAt.find(g => cx > g - 30 && cx < g + FORK_L + 20); if (gz) cx = gz + FORK_L + 40 + k * 6; const ob = objs.find(o => Math.abs(o.x - cx) < 28 && o.k !== 'pit'); objs.push({ k: 'clue', x: cx, hy: ob ? (ob.h > 40 ? 70 : 58) : (Math.random() < .5 ? 14 : 46), ci }); });
     gatesAt.forEach((gxp, i) => objs.push({ k: 'gate', x: gxp, gate: cs.gates[i % cs.gates.length], gi: i % cs.gates.length }));
   } else {
     const pool = shuffle(CASES.flatMap(c => c.quick.map(q => ({ q, c })))).slice(0, 8);
@@ -383,14 +383,17 @@ function hurt() {
 function updateRun(dt) {
   if (!R || R.paused || R.done || uiRoot.querySelector('.card,.box')) return;
   R.t += dt;
-  const gateAhead = R.objs.find(o => o.k === 'gate' && !o.passed && o.x - R.dist > -10 && o.x - R.dist < 185);
-  R.slowK += ((gateAhead ? .45 : 1) - R.slowK) * Math.min(1, dt * 4);
-  if (gateAhead !== R.gateNow) { R.gateNow = gateAhead; showGate(gateAhead); if (gateAhead && save.tutGate !== 2) return gateTutorial(); }
+  if (R.cut) return updateCut(dt);
+  const fxg = footX();
+  const gateAhead = R.objs.find(o => o.k === 'gate' && !o.passed && o.x - fxg < 175 && fxg < o.x + FORK_L);
+  const choosing = gateAhead && gateAhead.lane == null;
+  R.slowK += ((choosing ? .45 : 1) - R.slowK) * Math.min(1, dt * 4);
+  if (gateAhead !== R.gateNow) { R.gateNow = gateAhead; showGate(gateAhead); if (gateAhead && save.tutGate !== 3) return gateTutorial(); }
   const fx0 = footX(), slope = (gh(fx0 + 6) - gh(fx0 - 6)) / 12;
   const sp = (R.speed + Math.min(28, R.t * .9)) * (R.bike > 0 ? 1.7 : 1) * R.slowK * (R.ground ? Math.max(.75, Math.min(1.25, 1 - slope * .9)) : 1);
   R.dist += sp * dt;
   // 몸 + 땅 (오르막·내리막·구멍)
-  const fx = footX(), pit = pitAt(fx), G = pit ? -999 : gh(fx);
+  const fx = footX(), pit = pitAt(fx), G = pit ? -999 : groundAt(fx);
   if (R.ground) {
     if (pit) { R.ground = false; R.vy = 0; }
     else if (G >= R.y || R.y - G < 7) R.y = G; else { R.ground = false; R.vy = 0; }
@@ -403,12 +406,15 @@ function updateRun(dt) {
       if (hurt()) return;
     }
   }
+  if (R.fork) { const d = fx - R.fork.x;
+    if (d > FORK_L) R.fork = null;
+    else if (R.fork.lane === 1 && d > DECK0 - 4 && d < DECK1 + 4) { const top = gh(R.fork.x) + PLAT_H - 33; if (R.y > top) { R.y = top; if (R.vy > 0) R.vy = 0; } } }
   if (R.slide > 0) R.slide -= dt;
   if (R.inv > 0) R.inv -= dt; if (R.hurtT > 0) R.hurtT -= dt;
   if (R.bike > 0) { R.bike -= dt; if (R.bike <= 0) { toast('🚲 자전거를 세워 두었어요'); } }
   const ph = R.slide > 0 ? PH_SLIDE : PH, px0 = PLAYER_X + 4, px1 = PLAYER_X + 18;
   for (const o of R.objs) {
-    const sx = o.x - R.dist; if (sx > W + 60) break; if (sx < -60 || o.gone) continue;
+    const sx = o.x - R.dist; if (sx > W + 60) break; if (sx < -60 - (o.k === 'gate' ? FORK_L : 0) || o.gone) continue;
     if (o.k === 'obs') {
       if (o.roll && sx < W + 10) o.x -= 48 * dt;
       if (o.bird && sx < W + 10) o.x -= 34 * dt;
@@ -431,7 +437,7 @@ function updateRun(dt) {
       const by = GY - gh(o.x) - o.hy;
       if (sx + 20 > px0 && sx < px1 && GY - R.y - ph < by + 14 && GY - R.y > by) { o.gone = true; R.bike = 6; Sound.sfx('bike'); bikeCard(); }
     } else if (o.k === 'gate') {
-      if (!o.passed && sx + 15 < PLAYER_X + 11) passGate(o);
+      if (!o.passed) { if (forkStep(o, footX())) return; }
     } else if (o.k === 'goal' && sx < PLAYER_X) { R.done = true; return finishRun(); }
   }
   R.fx.forEach(f => { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 140 * dt; f.life -= dt; }); R.fx = R.fx.filter(f => f.life > 0);
@@ -455,20 +461,21 @@ function msg(html, cls = '', ms = 1600) {
   msgT = setTimeout(() => { m.className = ''; m.innerHTML = ''; }, ms);
 }
 function flash(t, py, cls) { msg(`${esc(t)}${py && set.py ? ` <span>${esc(py)}</span>` : ''}`, cls, 1800); }
-/* 관문: 2지선다 — 위 답 = 점프로 통과, 아래 답 = 미끄러져서 통과. 틀린 쪽은 잠겨서 튕겨 나와요. */
-const GATE_UP = 66, GATE_DN = 7;
+/* 관문 = 갈림길: 점프 → 위 길(다리), 그냥 달리기 → 아래 길. 정답은 길 끝 "?" 커튼에서 밝혀져요.
+   틀린 길: 경찰에게 잡히거나(站住！), 공사장 벽에 쾅, 다리가 무너져 추락 → 하트 -1, 갈림길 앞으로 돌아가요. */
+const FORK_L = 300, PLAT_H = 50, FORK_IN = 12, FORK_REV = FORK_L - 72, DECK0 = 8, DECK1 = FORK_L - 44;
 async function gateTutorial() {
-  save.tutGate = 2; persist();
-  const c = card(`<h2>🚪 덩어리 관문이에요!</h2>
-    <div class="t">빈칸 <b>＿</b> 에 들어갈 말을 골라요. 답은 두 개!</div>
-    <div class="small" style="margin:1em 0;font-size:1.1em">⤒ <b>위 답</b>이 맞으면 → <b>점프</b>로 통과<br>⤓ <b>아래 답</b>이 맞으면 → <b>미끄러지기</b>로 통과</div>
-    <div class="t">버튼에도 답이 적혀 있어요. 틀린 쪽은 잠겨 있어서 튕겨 나와요!</div>
-    <div class="row"><button class="big go">알겠어요!</button></div>`);
+  save.tutGate = 3; persist();
+  const c = card(`<h2>🛣 갈림길 관문이에요!</h2>
+    <div class="t">빈칸 <b>＿</b> 에 들어갈 말이 적힌 <b>길</b>을 골라요.</div>
+    <div class="small" style="margin:1em 0;font-size:1.1em">⤒ <b>점프</b> → 위 길 (다리)<br>➡ <b>그냥 달리기</b> → 아래 길</div>
+    <div class="t">정답은 <b>길 끝의 ❓ 커튼</b>에서 밝혀져요. 틀린 길로 가면… 경찰에게 잡히거나, 벽에 부딪히거나, 다리가 무너질지도! 😱</div>
+    <div class="row"><button class="big go">조심해서 고를게요!</button></div>`);
   await wait(c);
 }
 function setOptBtns(o) {
   const oJ = $('#oJ'), oS = $('#oS'); if (!oJ) return;
-  [oJ, oS].forEach((b, i) => { b.textContent = o ? o.opts[i] : ''; b.className = 'opt' + (o && o.locked.includes(i) ? ' x' : '') + (o && o.hint === i ? ' hint' : ''); });
+  [oJ, oS].forEach((b, i) => { b.innerHTML = o ? `<i>${i ? '➡ 아래 길' : '⤒ 위 길'}</i>${esc(o.opts[i])}` : ''; b.className = 'opt' + (o && o.locked.includes(i) ? ' x' : '') + (o && o.lane === i ? ' pick' : ''); });
   pad.classList.toggle('asking', !!o);
 }
 function showGate(o) {
@@ -476,37 +483,129 @@ function showGate(o) {
   const gq = $('#gq');
   if (!o) { if (gq) { gq.innerHTML = ''; gq.className = ''; } setOptBtns(null); return; }
   const g = o.gate;
-  if (!o.opts) { o.opts = shuffle([g.ans, g.wrong[0]]); o.locked = []; o.hint = -1; }
-  if (gq) { gq.className = 'on'; gq.innerHTML = g.quiz ? `<span class="zh">${esc(g.q)}</span>${set.ko ? ` <small>${esc(g.ko)}</small>` : ''}` : `🚪 ${esc(g.ko)} <span class="zh">${esc(g.stem)}</span>`; }
+  if (!o.opts) { o.opts = shuffle([g.ans, g.wrong[0]]); o.locked = []; o.lane = null; }
+  if (gq) { gq.className = 'on'; gq.innerHTML = g.quiz ? `<span class="zh">${esc(g.q)}</span>${set.ko ? ` <small>${esc(g.ko)}</small>` : ''}` : `🛣 ${esc(g.ko)} <span class="zh">${esc(g.stem)}</span>`; }
   Sound.sfx('gate'); speak(g.quiz ? g.q : g.stem.replace(/＿+/, '什么'));
-  o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab ${i ? 'dn' : 'up'}${o.locked.includes(i) ? ' x' : ''}">${i ? '⤓' : '⤒'} ${esc(t)}</div>`); ov.appendChild(d); return d; });
+  o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab ${i ? 'dn' : 'up'}${o.locked.includes(i) ? ' x' : ''}">${i ? '➡' : '⤒'} ${esc(t)}</div>`); ov.appendChild(d); return d; });
   setOptBtns(o);
 }
-function passGate(o) {
-  const pickI = !R.ground ? 0 : R.slide > 0 ? 1 : -1, g = o.gate;
-  const full = g.quiz ? g.ans : g.stem.replace(/＿+/, g.ans);
-  const bump = () => { Sound.sfx('lock'); R.dist -= 64; R.vy = 140; R.ground = false; R.jumps = 2; R.slide = 0; R.hurtT = .45; R.slowK = .3; puff(PLAYER_X + 18, GY - R.y - 15, '#ff8a7a'); };
-  if (pickI < 0) { bump(); flash('⤒ 점프 또는 ⤓ 미끄러지기로 골라요!', '', 'no'); return; }
-  if (o.opts[pickI] === g.ans) {
-    o.passed = true;
-    R.gates.push({ g, ok: !o.failed, first: true });
-    Sound.sfx('open'); puff(PLAYER_X + 12, GY - R.y - 20, '#7fd6a8'); speak(full);
-    if (!g.quiz && !o.failed) delete save.weakGate[R.cs.no + ':' + o.gi];
-    flash(`⭕ ${full}`, g.py, 'ok'); persist();
-    R.gateNow = null; showGate(null);
-    return;
+/* 갈림길 안에서의 땅 높이 */
+function groundAt(fx) {
+  const base = gh(fx), o = R.fork;
+  if (!o || o.lane !== 0) return base;
+  const d = fx - o.x;
+  if (R.cut && R.cut.type === 'fall' && d > FORK_REV - 14) return -999;
+  if (d >= DECK0 && d <= DECK1) return base + PLAT_H;
+  if (d > DECK1 && d < FORK_L) return base + PLAT_H * (1 - (d - DECK1) / (FORK_L - DECK1));
+  return base;
+}
+function forkStep(o, fx) {
+  const d = fx - o.x, base = gh(o.x);
+  if (o.lane == null && d >= FORK_IN) {
+    let lane = R.ground ? 1 : 0;
+    if (lane === 0 && o.locked.includes(0)) lane = 1;
+    if (lane === 1 && o.locked.includes(1)) {          // 아래 길이 막힘 → 튕겨 나옴
+      Sound.sfx('lock'); R.dist -= 60; R.vy = 140; R.ground = false; R.jumps = 2; R.hurtT = .4; R.slowK = .3;
+      flash('🚧 아래 길은 막혔어요! ⤒ 점프해서 위 길로', '', 'no'); return false;
+    }
+    o.lane = lane; R.fork = o; setOptBtns(o); Sound.sfx(lane ? 'step' : 'jump2');
+    if (lane === 0) { const need = base + PLAT_H + 6 - R.y; if (need > 0) R.vy = Math.max(R.vy, Math.sqrt(2 * GRAV * need)); R.ground = false; }
+    msg(`${lane ? '➡ 아래 길' : '⤒ 위 길'} 「${esc(o.opts[lane])}」 선택! 길 끝에서 정답이 밝혀져요…`, '', 2600);
   }
-  o.failed = true; if (!o.locked.includes(pickI)) o.locked.push(pickI); o.hint = 1 - pickI;
+  if (o.lane != null && d >= FORK_REV && !o.revealed) {
+    o.revealed = true;
+    const g = o.gate, ok = o.opts[o.lane] === g.ans, full = g.quiz ? g.ans : g.stem.replace(/＿+/, g.ans);
+    if (ok) {
+      o.passed = true; R.gates.push({ g, ok: !o.failed, first: true });
+      Sound.sfx('open'); for (let i = 0; i < 3; i++) puff(PLAYER_X + 12 + i * 6, GY - R.y - 20, ['#7fd6a8', '#ffd36e', '#ff9ab3'][i]); speak(full);
+      if (!g.quiz && !o.failed) delete save.weakGate[R.cs.no + ':' + o.gi];
+      flash(`⭕ 정답! ${full}`, g.py, 'ok'); persist();
+      setTimeout(() => { if (R && R.gateNow === o) { showGate(null); } }, 900);
+    } else {
+      const type = o.lane === 0 ? pick(['fall', 'police']) : pick(['crash', 'police']);
+      R.cut = { o, lane: o.lane, type, t: 0, full, wrong: o.opts[o.lane], x0: R.dist, y0: R.y };
+      if (type === 'police') { Sound.sfx('whistle'); speak('站住！'); }
+      if (type === 'fall') Sound.sfx('crack');
+      return true;
+    }
+  }
+  return false;
+}
+function updateCut(dt) {
+  const c = R.cut; c.t += dt; const o = c.o;
+  if (c.type === 'police') {
+    if (c.t < .35) R.dist += 60 * dt;
+    if (c.t > .55 && !c.hit) { c.hit = 1; Sound.sfx('hurt'); R.hurtT = 1.2; }
+  } else if (c.type === 'crash') {
+    if (!c.hit) { R.dist += 140 * dt; if (R.dist + PLAYER_X + 18 >= o.x + FORK_REV + 14) { c.hit = 1; c.th = c.t; Sound.sfx('smash'); R.hurtT = 1.2; R.vy = 160; R.ground = false; } }
+    else { R.dist -= 50 * dt; R.vy -= GRAV * dt; R.y = Math.max(groundAt(footX()), R.y + R.vy * dt); }
+  } else if (c.type === 'fall') {
+    R.dist += 30 * dt; R.ground = false; R.vy -= GRAV * dt; R.y += R.vy * dt; R.hurtT = .2;
+    if (!c.snd && R.y < c.y0 - 30) { c.snd = 1; Sound.sfx('pit'); }
+  }
+  R.fx.forEach(f => { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 140 * dt; f.life -= dt; }); R.fx = R.fx.filter(f => f.life > 0);
+  if (c.t > 1.7) endCut();
+}
+function endCut() {
+  const c = R.cut, o = c.o, g = o.gate;
+  R.cut = null;
+  o.failed = true; if (!o.locked.includes(o.lane)) o.locked.push(o.lane); o.lane = null; o.revealed = false;
   if (!g.quiz) save.weakGate[R.cs.no + ':' + o.gi] = 1; persist();
-  bump(); flash(`🔒 「${o.opts[pickI]}」은(는) 아니에요! ${pickI ? '⤒ 점프' : '⤓ 미끄러지기'}로 다시`, '', 'no');
-  if (o.labs[pickI]) o.labs[pickI].classList.add('x');
-  setOptBtns(o);
+  const why = { police: '👮 경찰에게 잡혔어요!', crash: '🚧 공사장 벽에 쾅!', fall: '💥 다리가 무너졌어요!' }[c.type];
+  msg(`${why} 「${esc(c.wrong)}」은(는) 틀린 길 · 정답 <b>${esc(c.full)}</b>`, 'no', 3200); speak(c.full);
+  R.dist = o.x - PLAYER_X - 11 - 190; R.y = gh(footX()); R.vy = 0; R.ground = true; R.jumps = 0; R.slide = 0; R.hurtT = 0; R.slowK = .45;
+  R.gateNow = null; R.fork = null;
+  if (hurt()) return;
 }
 async function failRun() {
   R.done = true; Sound.sfx('hurt'); Sound.bgm('fail');
   const c = card(`<h2>😵 앗, 넘어졌어요!</h2><div class="small">괜찮아요! 다시 달리면 돼요. 모은 단서 ${R.got.length}개는 기억해 둘게요.</div><div class="row"><button class="big go">🔁 다시 달리기</button></div><div class="row"><button class="btn mp">지도로</button></div>`);
   c.querySelector('.mp').onclick = () => { c.close(); mapScreen(); };
   await wait(c); startRun(R.cs, R.boss);
+}
+function drawFork(o, sx, t) {
+  const base = Math.round(gh(o.x)), gy = GY - base, dy = gy - PLAT_H, col = THEME.col;
+  const fall = R.cut && R.cut.o === o && R.cut.type === 'fall', ft = fall ? R.cut.t : 0;
+  // 갈림길 표지판
+  PX.R(ctx, sx - 2, gy - 34, 2, 34, '#3b2a35'); PX.R(ctx, sx - 8, gy - 34, 14, 8, '#2a1d24'); PX.R(ctx, sx - 7, gy - 33, 12, 6, '#ffd36e'); PX.text(ctx, '↗', sx - 6, gy - 35, 7, '#2a1d24');
+  // 다리 기둥
+  for (let x = DECK0 + 14; x < DECK1; x += 56) { PX.R(ctx, sx + x, dy + 4, 5, PLAT_H - 4, '#5a4a5c'); PX.R(ctx, sx + x, dy + 4, 1, PLAT_H - 4, '#7a6a7c'); }
+  // 다리 바닥 (추락 때는 끝부분이 부서짐)
+  for (let x = DECK0; x <= DECK1; x += 2) {
+    let yy = dy; if (fall && x > FORK_REV - 16) { if (x > FORK_REV + 30) {} else yy = dy + ft * ft * 260 * (0.6 + ((x * 7) % 5) / 10); }
+    PX.R(ctx, sx + x, yy, 2, 4, (x / 2) % 4 ? '#a8744e' : '#8a5a30'); PX.R(ctx, sx + x, yy, 2, 1, '#d8a468');
+    if (x % 10 === 0) { PX.R(ctx, sx + x, yy - 9, 1, 9, '#6a4028'); }
+  }
+  for (let x = DECK0; x <= DECK1; x += 10) PX.R(ctx, sx + x, dy - 9, 10, 1, '#8a5a30');
+  // 내려오는 계단
+  for (let k = 0; k < 6; k++) { const x = DECK1 + k * 7, y = dy + k * (PLAT_H / 6); PX.R(ctx, sx + x, y, 8, gy - y, '#8a5a30'); PX.R(ctx, sx + x, y, 8, 2, '#c99252'); }
+  // 오르는 경사 (점프 발판)
+  PX.R(ctx, sx + DECK0 - 4, dy, 4, 3, col);
+  // ❓ 커튼 (정답 공개 지점) — 위 길·아래 길 모두
+  const open = o.passed, rx = sx + FORK_REV;
+  [[dy - 40, 38], [gy - 44, 42]].forEach(([y, h], i) => {
+    PX.R(ctx, rx - 2, y, 3, h, '#3b2a35'); PX.R(ctx, rx + 15, y, 3, h, '#3b2a35'); PX.R(ctx, rx - 3, y - 3, 22, 4, '#c0392b');
+    if (!open && !(R.cut && R.cut.o === o && R.cut.lane === i)) { for (let k = 0; k < 15; k += 3) PX.R(ctx, rx + 1 + k, y + 1, 3, h - 1, k % 2 ? '#5a3a6a' : '#6a4a7a'); PX.text(ctx, '?', rx + 5, y + h / 2 - 7, 10, '#ffd36e'); }
+  });
+  // 막힌 길 표시
+  (o.locked || []).forEach(i => { const y = i ? gy - 22 : dy - 22; for (let k = 0; k < 4; k++) PX.R(ctx, sx + 16, y + 2 + k * 5, 18, 3, k % 2 ? '#2a1d24' : '#f2c14e'); PX.R(ctx, sx + 17, y + 22, 2, i ? 0 : 0, '#000'); PX.text(ctx, '✕', sx + 20, y - 9, 9, '#e2504c'); });
+  // 공사장 벽 (충돌 컷신)
+  if (R.cut && R.cut.o === o && R.cut.type === 'crash') { const y = o.lane === 0 ? dy : gy, bx = rx + 14; PX.R(ctx, bx, y - 40, 10, 40, '#d8d0c0'); for (let k = 0; k < 40; k += 8) PX.R(ctx, bx, y - 40 + k, 10, 4, '#e2504c'); PX.R(ctx, bx - 2, y - 46, 14, 7, '#2a1d24'); PX.text(ctx, '施工', bx - 2, y - 47, 7, '#ffd36e'); }
+  // 이름표 위치
+  if (o.labs) o.labs.forEach((d, i) => { d.style.left = gx(sx + 22) + 'px'; d.style.top = gx(i ? gy - 15 : dy - 20) + 'px'; d.style.display = o.lane != null && o.lane !== i ? 'none' : ''; });
+}
+function drawCut(t) {
+  const c = R.cut;
+  if (c.type === 'police') {
+    const k = Math.min(1, c.t / .55), x = Math.round(PLAYER_X + 140 - k * 112), y = Math.round(GY - R.y - PX.SH + 1);
+    const im = k < 1 ? PX.person('police', 'run', Math.floor(t / 80) % 6) : PX.person('police', 'talk', Math.floor(t / 150) % 2, 'talk');
+    ctx.drawImage(PX.flip(im), x, y);
+    if (c.t > .2) { PX.R(ctx, x - 8, y - 19, 40, 17, '#1d1424'); PX.R(ctx, x - 7, y - 18, 38, 15, '#fff'); PX.R(ctx, x + 6, y - 2, 3, 3, '#1d1424'); PX.text(ctx, '站住!', x - 5, y - 20, 13, '#c0392b', "'Noto Sans SC', sans-serif", 900); }
+    if (c.t > .55) for (let i = 0; i < 3; i++) { const a = t / 150 + i * 2.1; PX.R(ctx, PLAYER_X + 12 + Math.cos(a) * 9, GY - R.y - 36 + Math.sin(a) * 3, 2, 2, '#ffd36e'); }
+  } else if (c.type === 'crash' && c.hit) {
+    for (let i = 0; i < 4; i++) { const a = t / 120 + i * 1.6; PX.R(ctx, PLAYER_X + 12 + Math.cos(a) * 10, GY - R.y - 36 + Math.sin(a) * 3, 2, 2, '#ffd36e'); }
+  }
+  if (c.t > 1.25) { ctx.fillStyle = `rgba(20,12,24,${Math.min(.8, (c.t - 1.25) * 1.8)})`; ctx.fillRect(0, 0, W, H); }
 }
 function drawGround() {
   const gc = THEME.ground, gH = gc.height;
@@ -528,7 +627,7 @@ function drawRun(t) {
   if (THEME.name === '重庆') { const tx = ((t / 1000 * 60 - R.dist * .2) % 900 + 900) % 900 - 200; PX.R(ctx, tx, 104, 58, 9, '#2a1d24'); PX.R(ctx, tx + 1, 105, 56, 7, '#e2504c'); for (let i = 0; i < 6; i++) PX.R(ctx, tx + 4 + i * 9, 106, 6, 3, '#fff6dc'); PX.R(ctx, tx + 1, 111, 56, 1, '#a8332f'); }
   drawGround();
   for (const o of R.objs) {
-    const sx = Math.round(o.x - R.dist); if (sx > W + 60) break; if (sx < -60 || o.gone) continue;
+    const sx = Math.round(o.x - R.dist); if (sx > W + 60) break; if (sx < -60 - (o.k === 'gate' ? FORK_L : 0) || o.gone) continue;
     if (o.k === 'obs') {
       const base = Math.round(gh(o.x + o.w / 2));
       if (o.roll) ctx.drawImage(o.ob.fr[((Math.floor(o.x / 4) % 4) + 4) % 4], sx, GY - base - 17);
@@ -537,17 +636,13 @@ function drawRun(t) {
     }
     else if (o.k === 'clue') { const y = GY - gh(o.x) - o.hy, b = Math.round(Math.sin(t / 180 + o.x) * 1.5); ctx.drawImage(ART.ITEM.clue, sx, Math.round(y) + b); if ((t / 120 | 0) % 6 === 0) PX.P(ctx, sx + 2, y + b, '#fff'); }
     else if (o.k === 'bike') { const y = Math.round(GY - gh(o.x) - o.hy); ctx.drawImage(ART.ITEM.bike, sx, y + Math.round(Math.sin(t / 200) * 1.5)); PX.R(ctx, sx + 6, y - 6, 10, 5, '#2a1d24'); PX.R(ctx, sx + 7, y - 5, 8, 3, '#f2b631'); }
-    else if (o.k === 'gate') {
-      const base = Math.round(gh(o.x));
-      const gi = ART.gate(THEME.col); ctx.drawImage(gi, sx, GY - base - gi.height + 1);
-      (o.locked || []).forEach(i => i ? ctx.drawImage(ART.BARS_DN, sx + 5, GY - base - 13) : ctx.drawImage(ART.BARS, sx + 5, GY - base - 96));
-      if (o.labs) o.labs.forEach((d, i) => { d.style.left = gx(sx + 15) + 'px'; d.style.top = gx(GY - base - (i ? GATE_DN : GATE_UP)) + 'px'; });
-    } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
+    else if (o.k === 'gate') drawFork(o, sx, t); else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
   if (!blink) {
     let im;
-    if (R.bike > 0) im = PX.rider('minhao', Math.floor(t / 70) % 4);
+    if (R.cut && R.cut.type === 'fall') im = PX.person('minhao', 'hurt');
+    else if (R.bike > 0) im = PX.rider('minhao', Math.floor(t / 70) % 4);
     else if (R.hurtT > 0) im = PX.person('minhao', 'hurt');
     else if (R.slide > 0) im = PX.person('minhao', 'slide');
     else if (!R.ground) im = PX.person('minhao', R.vy > 0 ? 'jump' : 'fall');
@@ -555,7 +650,8 @@ function drawRun(t) {
     ctx.drawImage(im, PLAYER_X - (R.bike > 0 ? 4 : 0), Math.round(GY - R.y - PX.SH + 1));
     if (R.bike > 0) for (let i = 0; i < 3; i++) PX.R(ctx, PLAYER_X - 10 - i * 6 - (t / 30 % 6), GY - R.y - 10 - i * 4, 5, 1, '#ffffffaa');
   }
-  if (!R.ground) { const G = gh(footX()); PX.ellipse(ctx, PLAYER_X + 12, GY - G + 2, Math.max(3, 8 - (R.y - G) / 12), 1, 'rgba(0,0,0,.18)'); }
+  if (R.cut) drawCut(t);
+  if (!R.ground && !R.cut) { const G = Math.max(0, groundAt(footX())); PX.ellipse(ctx, PLAYER_X + 12, GY - G + 2, Math.max(3, 8 - (R.y - G) / 12), 1, 'rgba(0,0,0,.18)'); }
   R.fx.forEach(f => PX.R(ctx, f.x, f.y, 2, 2, f.col));
   if (R.snow.length) R.snow.forEach(s => { s[0] -= (20 + s[2] * 20) * .016 + (R.bike > 0 ? 3 : 1); s[1] += s[2] * .6; if (s[1] > H) s[1] = 0; if (s[0] < 0) s[0] += W + 40; PX.R(ctx, s[0], s[1], s[2] > 1 ? 2 : 1, s[2] > 1 ? 2 : 1, '#ffffff'); });
 }
