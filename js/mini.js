@@ -516,9 +516,49 @@ const MINI = (() => {
     return { start, update, draw };
   })();
 
-  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE };
+  /* ───── 🃏 암호 카드 뒤집기: 한자 카드와 뜻 카드를 짝지어요 ───── */
+  const CARDS = (() => {
+    let C = null;
+    function start(cs) {
+      go('mini'); CUR = 'cards'; Sound.bgm('check');
+      const ids = shuffle(cs.clues.map((c, i) => i)).slice(0, 4);
+      const deck = shuffle(ids.flatMap(ci => [{ ci, side: 'zh' }, { ci, side: 'ko' }]));
+      C = { cs, deck, open: [], pairs: 0, miss: 0, lock: false, done: false, t: 0 };
+      topPad('🃏 0/4', `<div class="small center">카드 2장을 뒤집어 한자와 뜻을 짝지어요</div>`);
+      $('#gq').innerHTML = '🃏 무음단 암호 카드! 같은 뜻끼리 짝지으면 암호가 풀려요';
+      const wrap = el(`<div class="mcards">${deck.map((d, i) => `<button class="mc" data-i="${i}"><span class="back">嘘</span><span class="front ${d.side}">${esc(d.side === 'zh' ? cs.clues[d.ci][0] : cs.clues[d.ci][2])}</span></button>`).join('')}</div>`);
+      wrap.querySelectorAll('.mc').forEach(b => b.onclick = () => flip(+b.dataset.i, b));
+      (LAND ? ov : pad).appendChild(wrap); C.wrap = wrap;
+      tut('tutCards', `<h2>🃏 암호 카드 뒤집기!</h2><div class="t">무음단이 암호 카드를 엎어 놨어요.</div><div class="small" style="margin:1em 0;font-size:1.1em">카드를 2장씩 뒤집어서<br><b>한자 카드</b>와 <b>뜻 카드</b>를 짝지어요.<br>4쌍을 모두 찾으면 성공!</div>`);
+    }
+    async function flip(i, b) {
+      if (!C || C.lock || b.classList.contains('up') || b.classList.contains('done')) return;
+      b.classList.add('up'); Sound.sfx('tile'); const d = C.deck[i];
+      if (d.side === 'zh') speak(C.cs.clues[d.ci][0]);
+      C.open.push({ i, b, d });
+      if (C.open.length < 2) return;
+      C.lock = true; const [a, c] = C.open; C.open = [];
+      if (a.d.ci === c.d.ci && a.d.side !== c.d.side) {
+        await sleep(350); [a, c].forEach(x => x.b.classList.add('done')); C.pairs++; Sound.sfx('ding');
+        const w = C.cs.clues[a.d.ci]; msg(`⭕ <b>${esc(w[0])}</b> <span>${esc(w[1])}</span> · ${esc(w[2])}`, 'ok', 1300); speak(w[0]);
+        $('#dg').textContent = `🃏 ${C.pairs}/4`;
+        if (C.pairs >= 4) { C.done = true; await sleep(900); const k = C; C = null; k.wrap.remove(); return finishMini('cards', true, { miss: Math.max(0, k.miss - 3) }, '🎉 암호를 모두 풀었어요!'); }
+      } else { C.miss++; Sound.sfx('bad'); await sleep(900); [a, c].forEach(x => x.b.classList.remove('up')); }
+      C.lock = false;
+    }
+    function update(dt) { if (C) C.t += dt; }
+    function draw(t) {
+      if (!C) return;
+      PX.R(ctx, 0, 0, W, H, '#2a3a2e'); for (let y = 0; y < H; y += 8) for (let x = (y / 8 % 2) * 8; x < W; x += 16) PX.R(ctx, x, y, 8, 8, '#2f4234');
+      PX.R(ctx, 0, GY, W, H - GY, '#5a3a24'); PX.R(ctx, 0, GY, W, 2, '#7a5a3a');
+      ctx.drawImage(PX.person(PL(), 'think'), 8, GY - PX.SH + 1);
+    }
+    return { start, update, draw };
+  })();
+
+  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS };
   return {
-    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
+    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
     update(dt) { if (CUR && GAMES[CUR]) GAMES[CUR].update(dt); },
     draw(t) { if (CUR && GAMES[CUR]) GAMES[CUR].draw(t); },
     key(e, d) { if (CUR && GAMES[CUR].key) GAMES[CUR].key(e, d); },

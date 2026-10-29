@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.8.1 (2026.10.29)';
+const APP_VERSION = 'v0.9.0 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -308,7 +308,7 @@ function tunnelCanvas(w) {      // 낮은 빨랫줄·천막 (꾹 미끄러지기
   PX.R(g, 2, 44, w, 2, '#00000022');
   return TUNC[key] = PX.outline(c);
 }
-const MINI_KINDS = ['flash', 'dodge', 'subway', 'whack', 'radio', 'safe'];
+const MINI_KINDS = ['flash', 'dodge', 'subway', 'whack', 'radio', 'safe', 'cards'];
 function buildLevel(cs, boss) {
   const L = boss ? 4500 : 4200, objs = [];
   const gatesAt = boss ? Array.from({ length: 8 }, (_, i) => 360 + i * 510) : [.16, .38, .6, .8].map(f => Math.round(f * L));
@@ -696,7 +696,7 @@ function drawRun(t) {
     else if (o.k === 'clue') { const y = GY - gh(o.x) - o.hy, b = Math.round(Math.sin(t / 180 + o.x) * 1.5); ctx.drawImage(ART.ITEM.clue, sx, Math.round(y) + b); if ((t / 120 | 0) % 6 === 0) PX.P(ctx, sx + 2, y + b, '#fff'); }
     else if (o.k === 'bike') { const y = Math.round(GY - gh(o.x) - o.hy); ctx.drawImage(ART.ITEM.bike, sx, y + Math.round(Math.sin(t / 200) * 1.5)); PX.R(ctx, sx + 6, y - 6, 10, 5, '#2a1d24'); PX.R(ctx, sx + 7, y - 5, 8, 3, '#f2b631'); }
     else if (o.k === 'gate') drawFork(o, sx, t);
-    else if (o.k === 'event' && !o.done) { const b = Math.round(gh(o.x)), y = GY - b; PX.R(ctx, sx + 7, y - 30, 2, 30, '#3b2a35'); for (let k = 0; k < 9; k++) PX.R(ctx, sx + 8 - k, y - 44 + k * 1.5, k * 2 + 1, 2, '#2a1d24'); for (let k = 1; k < 8; k++) PX.R(ctx, sx + 8 - k + 1, y - 42 + k * 1.5, k * 2 - 1, 2, '#ffd36e'); PX.text(ctx, '!', sx + 6, y - 40, 8, '#c0392b'); const lb = { dodge: ['落物', '#c0392b'], flash: ['停电', '#3a3048'], subway: ['地铁', '#4f8fdc'], whack: ['小偷', '#2a2436'], radio: ['广播', '#9b59b6'], safe: ['密码', '#5a6a8a'] }[o.mg] || ['!', '#c0392b']; PX.R(ctx, sx - 4, y - 28, 24, 9, lb[1]); PX.text(ctx, lb[0], sx - 3, y - 29, 8, '#fff6dc'); } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
+    else if (o.k === 'event' && !o.done) { const b = Math.round(gh(o.x)), y = GY - b; PX.R(ctx, sx + 7, y - 30, 2, 30, '#3b2a35'); for (let k = 0; k < 9; k++) PX.R(ctx, sx + 8 - k, y - 44 + k * 1.5, k * 2 + 1, 2, '#2a1d24'); for (let k = 1; k < 8; k++) PX.R(ctx, sx + 8 - k + 1, y - 42 + k * 1.5, k * 2 - 1, 2, '#ffd36e'); PX.text(ctx, '!', sx + 6, y - 40, 8, '#c0392b'); const lb = { dodge: ['落物', '#c0392b'], flash: ['停电', '#3a3048'], subway: ['地铁', '#4f8fdc'], whack: ['小偷', '#2a2436'], radio: ['广播', '#9b59b6'], safe: ['密码', '#5a6a8a'], cards: ['暗号', '#3f8250'] }[o.mg] || ['!', '#c0392b']; PX.R(ctx, sx - 4, y - 28, 24, 9, lb[1]); PX.text(ctx, lb[0], sx - 3, y - 29, 8, '#fff6dc'); } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
   if (!R.boss && R.t < 4) { const gxp = Math.round(PLAYER_X + 70 + R.t * 70), gb = gh(R.dist + gxp + 11); ctx.drawImage(PX.person('club', 'run', Math.floor(t / 80) % 6), gxp, Math.round(GY - gb - PX.SH + 1)); if (R.t < 2.4) { PX.R(ctx, gxp - 4, GY - gb - 56, 34, 17, '#1d1424'); PX.R(ctx, gxp - 3, GY - gb - 55, 32, 15, '#fff'); PX.R(ctx, gxp + 8, GY - gb - 39, 3, 3, '#1d1424'); PX.text(ctx, '嘘…', gxp, GY - gb - 57, 13, '#5a4a6c', "'Noto Sans SC', sans-serif", 900); } }
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
