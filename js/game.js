@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.12.2 (2026.10.29)';
+const APP_VERSION = 'v0.12.3 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -22,6 +22,7 @@ const topEl = $('#top'), cv = $('#cv'), ov = $('#ov'), pad = $('#pad'), uiRoot =
 const ctx = cv.getContext('2d');
 let W = 300, S = 2, DPR = 1;
 let LAND = false, fitKey = '';
+const QR = 1;            // 내부 해상도 배수 (2로 올리면 반 픽셀 스크롤, 대신 무거워짐)
 function fit() {
   const app = $('#app'); DPR = window.devicePixelRatio || 1;
   fitKey = app.clientWidth + 'x' + app.clientHeight + '@' + DPR;
@@ -35,7 +36,7 @@ function fit() {
     S = Math.max(1, Math.round(cssW * DPR / 300));
     W = Math.max(220, Math.floor(cssW * DPR / S));
   }
-  cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
+  cv.width = W * QR; cv.height = H * QR; ctx.setTransform(QR, 0, 0, QR, 0, 0); ctx.imageSmoothingEnabled = false;
   const cw = W * S / DPR, ch = H * S / DPR;
   cv.style.width = ov.style.width = cw + 'px'; cv.style.height = ov.style.height = ch + 'px';
   skyC = null;
@@ -452,7 +453,8 @@ function updateRun(dt) {
   const fxg = footX();
   const gateAhead = R.objs.find(o => o.k === 'gate' && !o.passed && o.x - fxg < 175 && fxg < o.x + FORK_L);
   const choosing = gateAhead && gateAhead.lane == null;
-  R.slowK += ((choosing ? .45 : 1) - R.slowK) * Math.min(1, dt * 4);
+  const baseSp = (R.speed + Math.min(28, R.t * .9)) * (R.bike > 0 ? 1.7 : 1);
+  R.slowK += ((choosing ? Math.min(1, 61 / baseSp) : 1) - R.slowK) * Math.min(1, dt * 2.5);   // 갈림길 앞: 프레임당 약 1픽셀(뚝뚝 끊김 방지)
   if (gateAhead !== R.gateNow) { R.gateNow = gateAhead; showGate(gateAhead); if (gateAhead && save.tutGate !== 3) return gateTutorial(); }
   const fx0 = footX(), slope = (gh(fx0 + 6) - gh(fx0 - 6)) / 12;
   const sp = (R.speed + Math.min(28, R.t * .9)) * (R.bike > 0 ? 1.7 : 1) * R.slowK * (R.ground ? Math.max(.75, Math.min(1.25, 1 - slope * .9)) : 1);
@@ -715,6 +717,8 @@ function drawGround() {
 function drawRun(t) {
   if (!skyC) { const [c, g] = PX.mk(W, H); THEME.sky(g); skyC = c; }
   ctx.drawImage(skyC, 0, 0);
+  const realDist = R.dist, camI = Math.floor(realDist), camF = Math.round((realDist - camI) * QR) / QR;
+  R.dist = camI; ctx.save(); ctx.translate(-camF, 0);
   THEME.layers.forEach((L, i) => { const sc = R.dist * L.s, off = Math.floor(sc) % ART.LW, base = Math.floor(sc / ART.LW); let k = 0; for (let x = -off; x < W; x += ART.LW, k++) { const v = THEME.vars ? THEME.vars[(((base + k) * 7 + i) % 3 + 3) % 3][i] : L; ctx.drawImage((v || L).c, x, 0); } });
   if (THEME.name === '重庆') { const tx = ((t / 1000 * 60 - R.dist * .2) % 900 + 900) % 900 - 200; PX.R(ctx, tx, 104, 58, 9, '#2a1d24'); PX.R(ctx, tx + 1, 105, 56, 7, '#e2504c'); for (let i = 0; i < 6; i++) PX.R(ctx, tx + 4 + i * 9, 106, 6, 3, '#fff6dc'); PX.R(ctx, tx + 1, 111, 56, 1, '#a8332f'); }
   drawGround();
@@ -734,6 +738,7 @@ function drawRun(t) {
     else if (o.k === 'event' && !o.done) { const b = Math.round(gh(o.x)), y = GY - b; PX.R(ctx, sx + 7, y - 30, 2, 30, '#3b2a35'); for (let k = 0; k < 9; k++) PX.R(ctx, sx + 8 - k, y - 44 + k * 1.5, k * 2 + 1, 2, '#2a1d24'); for (let k = 1; k < 8; k++) PX.R(ctx, sx + 8 - k + 1, y - 42 + k * 1.5, k * 2 - 1, 2, '#ffd36e'); PX.text(ctx, '!', sx + 6, y - 40, 8, '#c0392b'); const lb = { dodge: ['落物', '#c0392b'], flash: ['停电', '#3a3048'], subway: ['地铁', '#4f8fdc'], whack: ['小偷', '#2a2436'], radio: ['广播', '#9b59b6'], safe: ['密码', '#5a6a8a'], cards: ['暗号', '#3f8250'], balloon: ['气球', '#ff8a3d'], connect: ['搭配', '#4f8fdc'], maze: ['迷宫', '#2a3048'], slide: ['拼图', '#9b59b6'], spot: ['找不同', '#3f8250'] }[o.mg] || ['!', '#c0392b']; PX.R(ctx, sx - 4, y - 28, 24, 9, lb[1]); PX.text(ctx, lb[0], sx - 3, y - 29, 8, '#fff6dc'); } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
   if (!R.boss && R.t < 4) { const gxp = Math.round(PLAYER_X + 70 + R.t * 70), gb = gh(R.dist + gxp + 11); ctx.drawImage(PX.person('club', 'run', Math.floor(t / 80) % 6), gxp, Math.round(GY - gb - PX.SH + 1)); if (R.t < 2.4) { PX.R(ctx, gxp - 4, GY - gb - 56, 34, 17, '#1d1424'); PX.R(ctx, gxp - 3, GY - gb - 55, 32, 15, '#fff'); PX.R(ctx, gxp + 8, GY - gb - 39, 3, 3, '#1d1424'); PX.text(ctx, '嘘…', gxp, GY - gb - 57, 13, '#5a4a6c', "'Noto Sans SC', sans-serif", 900); } }
+  ctx.restore(); R.dist = realDist;
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
   if (!blink) {
     let im;

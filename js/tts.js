@@ -22,7 +22,7 @@ const TTS = (() => {
   function speak(text, opt = {}) {
     if (!ok || !text) return Promise.resolve(false);
     return new Promise(res => {
-      try { speechSynthesis.cancel(); } catch (e) {}
+      try { if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel(); } catch (e) {}
       const v = pick();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'zh-CN'; if (v) u.voice = v;

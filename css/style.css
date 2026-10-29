@@ -144,7 +144,7 @@ a { color: #3a7bd5; }
 .glab .ln { display: inline-block; font-family: var(--ko); font-weight: normal; font-size: calc(2.4 * var(--u)); background: #2a1d2e; color: #fff; border-radius: calc(.8 * var(--u)); padding: 0 calc(.8 * var(--u)); margin-right: calc(.8 * var(--u)); vertical-align: middle; }
 .glab.x { background: #6a6070; color: #c8c0c8; text-decoration: line-through; }
 .glab.hint { background: #d9f5e5; animation: glow .6s infinite alternate; }
-@keyframes glow { to { box-shadow: 0 0 calc(2 * var(--u)) #7fd6a8; } }
+@keyframes glow { to { transform: scale(1.06); filter: brightness(1.08); } }
 
 /* ── 사다리: 순서 맞추기 ── */
 .slots { display: flex; flex-wrap: wrap; gap: calc(1.2 * var(--u)); justify-content: center; min-height: calc(10 * var(--u)); padding: calc(1.4 * var(--u)); background: #2a1d2e; border-radius: calc(2 * var(--u)); }
