@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.12.1 (2026.10.29)';
+const APP_VERSION = 'v0.12.2 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -393,6 +393,8 @@ function startRun(cs, boss = false) {
   R = { cs, boss, dist: 0, speed: 82, objs: [], y: 0, vy: 0, ground: true, jumps: 0, slide: 0, hearts: 3, inv: 0, bike: 0, got: [], gates: [], fx: [], paused: false, t: 0, done: false, gateNow: null, slowK: 1, hurtT: 0, snow: [], terr: [[0, 0], [1, 0]], pits: [] };
   R.objs = buildLevel(cs, boss);
   R.total = R.objs.find(o => o.k === 'goal').x;
+  buildGround();
+  R.objs.forEach(o => { if (o.k === 'gate' && !o.deckC) { const [c, g] = PX.mk(FORK_L + 8, PLAT_H + 12); drawDeck(g, 0, 10, PLAT_H + 10, THEME.col, 0, false); o.deckC = c; } });
   if (THEME.snow) for (let i = 0; i < 40; i++) R.snow.push([Math.random() * 400, Math.random() * H, .5 + Math.random()]);
   runPad(); setTop();
 }
@@ -554,7 +556,7 @@ function showGate(o) {
   const g = o.gate;
   if (!o.opts) { o.opts = shuffle([g.ans, g.wrong[0]]); o.locked = []; o.lane = null; }
   if (gq) { gq.className = 'on'; gq.innerHTML = g.quiz ? `<span class="zh">${esc(g.q)}</span>${set.ko ? ` <small>${esc(g.ko)}</small>` : ''}` : `🛣 ${esc(g.ko)} <span class="zh">${esc(g.stem)}</span>`; }
-  Sound.sfx('gate'); speak(g.quiz ? g.q : g.stem.replace(/＿+/, '什么'));
+  setTimeout(() => Sound.sfx('gate'), 30); if (g.quiz) setTimeout(() => { if (R && R.gateNow === o) speak(g.q); }, 450);
   o.labs = o.opts.map((t, i) => { const d = el(`<div class="glab ${i ? 'dn' : 'up'}${o.locked.includes(i) ? ' x' : ''}">${i ? '➡' : '⤒'} ${esc(t)}</div>`); ov.appendChild(d); return d; });
   setOptBtns(o);
 }
@@ -668,7 +670,7 @@ function drawFork(o, sx, t) {
   // 공사장 벽 (충돌 컷신)
   if (R.cut && R.cut.o === o && R.cut.type === 'crash') { const y = o.lane === 0 ? dy : gy, bx = rx + 14; PX.R(ctx, bx, y - 40, 10, 40, '#d8d0c0'); for (let k = 0; k < 40; k += 8) PX.R(ctx, bx, y - 40 + k, 10, 4, '#e2504c'); PX.R(ctx, bx - 2, y - 46, 14, 7, '#2a1d24'); PX.text(ctx, '施工', bx - 2, y - 47, 7, '#ffd36e'); }
   // 이름표 위치
-  if (o.labs) o.labs.forEach((d, i) => { d.style.left = gx(sx + 22) + 'px'; d.style.top = gx(i ? gy - 15 : dy - 20) + 'px'; d.style.display = o.lane != null && o.lane !== i ? 'none' : ''; });
+  if (o.labs) o.labs.forEach((d, i) => { const X = Math.round(gx(sx + 22)), Y = Math.round(gx(i ? gy - 15 : dy - 20)), k = X + ',' + Y; if (d._k !== k) { d._k = k; d.style.transform = `translate3d(${X}px, ${Y}px, 0) translate(-50%, -50%)`; } const hid = o.lane != null && o.lane !== i; if (d._h !== hid) { d._h = hid; d.style.display = hid ? 'none' : ''; } });
 }
 function drawCut(t) {
   const c = R.cut;
