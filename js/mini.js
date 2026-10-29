@@ -341,7 +341,7 @@ const MINI = (() => {
     const bonus = ok && extra.miss === 0 && R.hearts < 3; if (bonus) R.hearts++;
     msg(`${text}${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, ok ? 'ok' : 'no', 2000);
     R.mini = (R.mini || []).concat({ k: kind, ...extra });
-    document.querySelectorAll('.mbtn,.wlab,.blab,.mcards,.mconn,.mmaze').forEach(x => x.remove());
+    document.querySelectorAll('.mbtn,.wlab,.blab,.mcards,.mconn,.mmaze,.mslide,.mspot').forEach(x => x.remove());
     await sleep(1700); backToRun();
   }
   const optBtns = (opts, onPick, cls = '') => {
@@ -716,9 +716,133 @@ const MINI = (() => {
     return { start, update, draw };
   })();
 
-  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE };
+  /* ───── 🔢 슬라이딩 퍼즐: 조각을 밀어 도시 사진을 맞춰요. 조각 번호는 중국어 숫자 一~八 ───── */
+  const SLIDE = (() => {
+    let P = null;
+    const NUM = ['一', '二', '三', '四', '五', '六', '七', '八'];
+    function picture(cs) {
+      const [c, g] = PX.mk(120, 120), th = ART.THEMES[cs.theme]();
+      th.sky(g); g.drawImage(th.layers[0].c, -10, -70); if (th.layers[1]) g.drawImage(th.layers[1].c, -40, -60);
+      for (let x = 0; x < 120; x += ART.LW) g.drawImage(th.ground, x, 104);
+      PX.R(g, 0, 0, 120, 14, '#2a1d2ecc'); PX.text(g, cs.city, 4, 0, 12, '#ffd36e');
+      return c.toDataURL();
+    }
+    function start(cs) {
+      go('mini'); CUR = 'slide'; Sound.bgm('check');
+      let tiles = [0, 1, 2, 3, 4, 5, 6, 7, 8];         // 8 = 빈칸
+      let blank = 8, prev = -1;
+      for (let k = 0; k < 20; k++) { const r = (blank / 3) | 0, c = blank % 3; const nb = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([a, b]) => a >= 0 && b >= 0 && a < 3 && b < 3).map(([a, b]) => a * 3 + b).filter(p => p !== prev); const n = pick(nb); [tiles[blank], tiles[n]] = [tiles[n], tiles[blank]]; prev = blank; blank = n; }
+      P = { cs, tiles, moves: 0, done: false, img: picture(cs) };
+      topPad('🔢 0번', `<div class="small center">빈칸 옆 조각을 누르면 밀려요 · 一二三 순서대로 맞춰요</div>`);
+      $('#gq').innerHTML = '🔢 무음단이 찢어 놓은 도시 사진! 一 → 八 순서로 맞춰요';
+      render();
+      tut('tutSlide', `<h2>🔢 슬라이딩 퍼즐!</h2><div class="t">무음단이 도시 사진을 조각조각 섞어 놨어요.</div><div class="small" style="margin:1em 0;font-size:1.1em">빈칸 옆 조각을 누르면 미끄러져요.<br>조각의 중국어 숫자 <b>一 二 三 … 八</b> 순서로<br>왼쪽 위부터 맞춰요!</div>`);
+    }
+    function render() {
+      document.querySelectorAll('.mslide').forEach(x => x.remove());
+      const wrap = el(`<div class="mslide">${P.tiles.map((t, i) => t === 8 ? `<div class="st empty"></div>` : `<button class="st" data-i="${i}" style="background-image:url(${P.img});background-position:${(t % 3) * 50}% ${((t / 3) | 0) * 50}%"><b>${NUM[t]}</b></button>`).join('')}</div>`);
+      wrap.querySelectorAll('button').forEach(b => b.onclick = () => move(+b.dataset.i));
+      (LAND ? ov : pad).appendChild(wrap);
+    }
+    async function move(i) {
+      if (!P || P.done) return;
+      const bl = P.tiles.indexOf(8), r = (i / 3) | 0, c = i % 3, br = (bl / 3) | 0, bc = bl % 3;
+      if (Math.abs(r - br) + Math.abs(c - bc) !== 1) { Sound.sfx('bad'); return; }
+      [P.tiles[i], P.tiles[bl]] = [P.tiles[bl], P.tiles[i]]; P.moves++; Sound.sfx('tile');
+      speak(NUM[P.tiles[bl]]); $('#dg').textContent = `🔢 ${P.moves}번`; render();
+      if (P.tiles.every((t, k) => t === k)) {
+        P.done = true; Sound.sfx('open'); speak(P.cs.title.zh);
+        msg(`⭕ 완성! <b>${esc(P.cs.title.zh)}</b>`, 'ok', 2200);
+        await sleep(2000); const k = P; P = null; document.querySelectorAll('.mslide').forEach(x => x.remove());
+        return finishMini('slide', true, { moves: k.moves, miss: k.moves > 40 ? 1 : 0 }, `🎉 도시 사진 완성! (${k.moves}번 움직임)`);
+      }
+    }
+    function update() {}
+    function draw(t) { if (!P) return; PX.R(ctx, 0, 0, W, H, '#3a2a4a'); for (let y = 0; y < H; y += 10) PX.R(ctx, 0, y, W, 1, '#423252'); ctx.drawImage(PX.person(PL(), 'think'), 6, GY - PX.SH + 1); }
+    return { start, update, draw };
+  })();
+
+  /* ───── 🔍 틀린 그림 찾기: 두 골목 그림에서 다른 곳 4군데를 찾으면 숨은 단어가 나와요 ───── */
+  const SPOT = (() => {
+    let S2 = null;
+    const PW = 150, PH = 100;
+    function scene(cs) {
+      const r = PX.rng((Math.random() * 1e6) | 0), items = [];
+      items.push({ k: 'sun', x: 120, y: 14, on: true });
+      [[4, 30, 34, 70, '#c99a7a'], [40, 22, 30, 78, '#9fb6c0'], [72, 34, 36, 66, '#e2b88a'], [110, 26, 36, 74, '#b8a0c8']].forEach(([x, y, w, h, col]) => items.push({ k: 'bld', x, y, w, h, col }));
+      for (let b = 0; b < 4; b++) for (let k = 0; k < 4; k++) items.push({ k: 'win', x: [8, 44, 76, 114][b] + (k % 2) * 13, y: [36, 28, 40, 32][b] + Math.floor(k / 2) * 16, on: r() < .5 });
+      items.push({ k: 'line', x: 0, y: 46 });
+      [16, 46, 76, 106, 136].forEach((x, i) => items.push({ k: 'lan', x, y: 50 + (i % 2) * 3, col: '#e2504c' }));
+      items.push({ k: 'sign', x: 76, y: 70, t: cs.city.slice(0, 2) });
+      items.push({ k: 'bike', x: 18, y: 86, on: true });
+      items.push({ k: 'cat', x: 128, y: 92, on: true });
+      items.push({ k: 'pot', x: 60, y: 90, col: '#5fae6e' });
+      items.push({ k: 'bird', x: 52, y: 12, on: true });
+      return items;
+    }
+    const DIFFS = [
+      it => { const l = it.filter(x => x.k === 'lan'); const o = pick(l); o.col = '#4f8fdc'; return [o.x - 5, o.y - 3, 10, 12]; },
+      it => { const o = it.find(x => x.k === 'cat'); o.on = false; return [o.x - 8, o.y - 10, 18, 12]; },
+      it => { const o = it.find(x => x.k === 'bike'); o.on = false; return [o.x - 2, o.y - 10, 22, 14]; },
+      it => { const o = it.find(x => x.k === 'bird'); o.on = false; return [o.x - 4, o.y - 4, 12, 9]; },
+      it => { const o = it.find(x => x.k === 'pot'); o.col = '#ff9ab3'; return [o.x - 4, o.y - 10, 12, 16]; },
+      it => { const o = it.find(x => x.k === 'sun'); o.on = false; return [o.x - 9, o.y - 9, 18, 18]; },
+      it => { const w = pick(it.filter(x => x.k === 'win')); w.on = !w.on; return [w.x - 1, w.y - 1, 10, 12]; },
+      it => { const o = it.find(x => x.k === 'sign'); o.t = '嘘'; return [o.x - 2, o.y - 2, 30, 14]; }
+    ];
+    function paint(items) {
+      const [c, g] = PX.mk(PW, PH);
+      PX.vgrad(g, 0, 0, PW, 80, ['#9fd0f0', '#cfe8f8', '#f8e8d0']);
+      items.forEach(o => {
+        if (o.k === 'sun' && o.on) { PX.disc(g, o.x, o.y, 7, '#ffd36e'); PX.disc(g, o.x, o.y, 5, '#fff1b8'); }
+        if (o.k === 'bird' && o.on) { PX.line(g, o.x - 3, o.y, o.x, o.y + 2, '#3b2a35'); PX.line(g, o.x, o.y + 2, o.x + 3, o.y, '#3b2a35'); }
+        if (o.k === 'bld') { PX.R(g, o.x, o.y, o.w, o.h, o.col); PX.R(g, o.x, o.y, o.w, 2, '#00000022'); PX.R(g, o.x + o.w - 3, o.y, 3, o.h, '#00000018'); }
+        if (o.k === 'win') { PX.R(g, o.x, o.y, 8, 10, '#3b2a35'); PX.R(g, o.x + 1, o.y + 1, 6, 8, o.on ? '#ffd98a' : '#6a8ab0'); }
+        if (o.k === 'line') PX.R(g, 0, o.y, PW, 1, '#3b2a35');
+        if (o.k === 'lan') { PX.R(g, o.x, o.y - 3, 1, 3, '#3b2a35'); PX.ellipse(g, o.x, o.y + 3, 4, 4, o.col); PX.R(g, o.x - 3, o.y + 1, 7, 1, '#f2c14e'); }
+        if (o.k === 'sign') { PX.R(g, o.x, o.y, 26, 10, '#2a1d24'); PX.R(g, o.x + 1, o.y + 1, 24, 8, '#c0392b'); PX.text(g, o.t, o.x + 3, o.y - 1, 8, '#ffe9a8'); }
+      });
+      PX.R(g, 0, 80, PW, 20, '#b9a596'); for (let x = 0; x < PW; x += 12) PX.R(g, x, 88, 11, 1, '#9a8676');
+      items.forEach(o => {
+        if (o.k === 'bike' && o.on) { PX.disc(g, o.x + 3, o.y, 3, '#2a2430'); PX.disc(g, o.x + 15, o.y, 3, '#2a2430'); PX.line(g, o.x + 3, o.y, o.x + 9, o.y - 6, '#f2b631'); PX.line(g, o.x + 9, o.y - 6, o.x + 15, o.y, '#f2b631'); PX.R(g, o.x + 13, o.y - 9, 4, 1, '#2a2430'); }
+        if (o.k === 'cat' && o.on) { PX.ellipse(g, o.x, o.y - 3, 5, 3, '#3b3550'); PX.disc(g, o.x + 5, o.y - 7, 2, '#3b3550'); PX.P(g, o.x + 4, o.y - 10, '#3b3550'); PX.P(g, o.x + 6, o.y - 10, '#3b3550'); }
+        if (o.k === 'pot') { PX.R(g, o.x - 3, o.y - 4, 8, 6, '#a8743e'); PX.disc(g, o.x + 1, o.y - 7, 4, o.col); }
+      });
+      return c;
+    }
+    function start(cs) {
+      go('mini'); CUR = 'spot'; Sound.bgm('flash');
+      const A = scene(cs), Bi = JSON.parse(JSON.stringify(A));
+      const which = shuffle(DIFFS.map((f, i) => i)).slice(0, 4), boxes = which.map(i => DIFFS[i](Bi));
+      const words = shuffle(cs.clues.map((c, i) => i)).slice(0, 4);
+      S2 = { cs, boxes: boxes.map((b, i) => ({ b, ci: words[i], found: false })), got: 0, miss: 0, t: 0, done: false, imgA: paint(A).toDataURL(), imgB: paint(Bi).toDataURL() };
+      topPad('🔍 0/4', `<div class="small center">두 그림에서 다른 곳을 눌러요 · 찾으면 숨은 단어가 나와요</div>`);
+      $('#gq').innerHTML = '🔍 무음단이 골목을 몰래 바꿔 놨어요! 다른 곳 4군데를 찾아요';
+      const wrap = el(`<div class="mspot"><div class="pic"><img src="${S2.imgA}"><div class="marks"></div></div><div class="pic"><img src="${S2.imgB}"><div class="marks"></div></div></div>`);
+      wrap.querySelectorAll('.pic').forEach(p => p.addEventListener('pointerdown', e => tap(e, p)));
+      (LAND ? ov : pad).appendChild(wrap); S2.wrap = wrap;
+      tut('tutSpot', `<h2>🔍 틀린 그림 찾기!</h2><div class="t">무음단이 골목을 몰래 바꾸고 단어를 숨겼어요.</div><div class="small" style="margin:1em 0;font-size:1.1em">두 그림을 비교해서 <b>다른 곳 4군데</b>를 눌러요.<br>찾을 때마다 숨어 있던 단어가 나와요!</div>`);
+    }
+    function tap(e, p) {
+      if (!S2 || S2.done) return;
+      const r = p.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * PW, y = (e.clientY - r.top) / r.height * PH;
+      const hit = S2.boxes.find(o => !o.found && x > o.b[0] - 4 && x < o.b[0] + o.b[2] + 4 && y > o.b[1] - 4 && y < o.b[1] + o.b[3] + 4);
+      if (!hit) { S2.miss++; Sound.sfx('bad'); msg('✖ 거기는 똑같아요', 'no', 800); return; }
+      hit.found = true; S2.got++; Sound.sfx('clue');
+      S2.wrap.querySelectorAll('.marks').forEach(m => { const d = document.createElement('i'); d.style.left = ((hit.b[0] + hit.b[2] / 2) / PW * 100) + '%'; d.style.top = ((hit.b[1] + hit.b[3] / 2) / PH * 100) + '%'; m.appendChild(d); });
+      const c = S2.cs.clues[hit.ci]; speak(c[0]);
+      msg(`🔍 발견! 숨은 단어 <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1600);
+      $('#dg').textContent = `🔍 ${S2.got}/4`;
+      if (S2.got >= 4) { S2.done = true; setTimeout(() => { const k = S2; S2 = null; if (k) { k.wrap.remove(); finishMini('spot', true, { miss: Math.max(0, k.miss - 2) }, '🎉 바뀐 곳을 모두 찾았어요!'); } }, 1500); }
+    }
+    function update(dt) { if (S2) { S2.t += dt; if (S2.t > 75 && !S2.done) { S2.done = true; const k = S2; S2 = null; k.wrap.remove(); finishMini('spot', false, { miss: k.miss }, '⏰ 시간 끝! 다음엔 더 꼼꼼히 봐요'); } } }
+    function draw(t) { if (!S2) return; PX.R(ctx, 0, 0, W, H, '#2a2436'); for (let x = 0; x < W; x += 14) PX.R(ctx, x, 0, 7, H, '#30293e'); ctx.drawImage(PX.person(PL(), 'think'), 6, GY - PX.SH + 1); }
+    return { start, update, draw };
+  })();
+
+  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT };
   return {
-    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
+    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE, cards: CARDS, balloon: BALLOON, connect: CONNECT, maze: MAZE, slide: SLIDE, spot: SPOT }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
     update(dt) { if (CUR && GAMES[CUR]) GAMES[CUR].update(dt); },
     draw(t) { if (CUR && GAMES[CUR]) GAMES[CUR].draw(t); },
     key(e, d) { if (CUR && GAMES[CUR].key) GAMES[CUR].key(e, d); },

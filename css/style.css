@@ -301,3 +301,13 @@ a { color: #3a7bd5; }
 #pad .mmaze { position: static; margin-top: calc(2 * var(--u)); }
 .mmaze button { font-size: calc(4.2 * var(--u)); background: #e8e4f4; }
 .mmaze button.on { background: #ffd36e; } .mmaze button.hint { background: #d9f5e5; animation: glow .6s infinite alternate; }
+.mslide { left: 34%; top: 26%; width: min(36%, calc(70 * var(--u))); aspect-ratio: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(.6 * var(--u)); pointer-events: auto; background: #1d1424; padding: calc(.6 * var(--u)); border-radius: calc(1.4 * var(--u)); }
+#pad .mslide { position: static; margin: calc(2 * var(--u)) auto 0; width: 80%; }
+.st { position: relative; border: none; padding: 0; background-size: 300% 300%; image-rendering: pixelated; border-radius: calc(.8 * var(--u)); }
+.st b { position: absolute; left: calc(.6 * var(--u)); top: calc(.2 * var(--u)); font-family: var(--zh); font-weight: 900; font-size: calc(5 * var(--u)); color: #fff; text-shadow: 0 0 calc(.6 * var(--u)) #1d1424, 0 0 calc(.6 * var(--u)) #1d1424; }
+.st.empty { background: #2a2436; }
+.mspot { left: 10%; right: 2%; top: 24%; display: grid; grid-template-columns: 1fr 1fr; gap: calc(2 * var(--u)); pointer-events: auto; }
+#pad .mspot { position: static; grid-template-columns: 1fr; margin-top: calc(2 * var(--u)); }
+.mspot .pic { position: relative; border: calc(.6 * var(--u)) solid var(--line); border-radius: calc(1.2 * var(--u)); overflow: hidden; cursor: crosshair; }
+.mspot img { display: block; width: 100%; image-rendering: pixelated; }
+.mspot .marks i { position: absolute; width: calc(9 * var(--u)); height: calc(9 * var(--u)); border: calc(.7 * var(--u)) solid #e2504c; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 calc(.4 * var(--u)) #fff; animation: pop2 .2s; }
