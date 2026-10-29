@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.4.0 (2026.10.29)';
+const APP_VERSION = 'v0.5.0 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -62,8 +62,9 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if ((e.key === 'Enter' || e.key === ' ') && enterHook) { e.preventDefault(); enterHook(); return; }
   if (screen === 'run') runKey(e, true);
+  if (screen === 'dodge') MINI.key(e, true);
 });
-document.addEventListener('keyup', e => { if (screen === 'run') runKey(e, false); });
+document.addEventListener('keyup', e => { if (screen === 'run') runKey(e, false); if (screen === 'dodge') MINI.key(e, false); });
 /* 대화 한 줄씩: {who, t} 또는 {who, zh:[zh,py,ko]} */
 function say(lines, extra = {}) {
   return [].concat(lines).reduce((p, l) => p.then(() => new Promise(res => {
@@ -91,11 +92,11 @@ const wait = (c, sel = '.go') => new Promise(res => { const b = c.querySelector(
 
 /* ───────── 화면 전환 ───────── */
 let screen = 'title', cur = null;
-function go(s) { screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = 'pad-' + s; setTop(); }
+function go(s) { screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = s === 'dodge' ? 'pad-run pad-dodge' : 'pad-' + s; setTop(); }
 function setTop() {
   if (screen === 'title') { topEl.innerHTML = ''; return; }
   const stamps = CASES.filter(c => save.cleared[c.no]).length;
-  topEl.innerHTML = `<span class="badge">🔍 ${esc(save.name || '탐정')}</span><span class="grow">${screen === 'run' ? '' : `도장 조각 ${stamps}/12`}</span>
+  topEl.innerHTML = `<span class="badge">🔍 ${esc(save.name || '탐정')}</span><span class="grow">${screen === 'run' || screen === 'dodge' ? '' : `도장 조각 ${stamps}/12`}</span>
     ${screen === 'run' ? '<button class="ib" id="pz">⏸</button>' : ''}<button class="ib" id="mn">☰</button>`;
   $('#mn').onclick = openMenu; const pz = $('#pz'); if (pz) pz.onclick = pauseRun;
 }
@@ -209,11 +210,11 @@ function drawMap(t) {
 cv.addEventListener('pointerdown', e => {
   Sound.init();
   if (screen === 'map') { mapView.drag = { x: e.clientX, y: e.clientY, vx: mapView.x, vy: mapView.y, moved: 0 }; cv.setPointerCapture(e.pointerId); return; }
-  if (screen === 'run') runPointer(e, 'down');
+  if (screen === 'run') runPointer(e, 'down'); if (screen === 'dodge') MINI.pointer(e, 'down');
 });
 cv.addEventListener('pointermove', e => {
   if (screen === 'map' && mapView.drag) { const d = mapView.drag, k = DPR / S; mapView.x = Math.max(0, Math.min(ART.MAP.W - W, d.vx - (e.clientX - d.x) * k)); mapView.y = Math.max(0, Math.min(ART.MAP.H - H, d.vy - (e.clientY - d.y) * k)); d.moved++; }
-  if (screen === 'run') runPointer(e, 'move');
+  if (screen === 'run') runPointer(e, 'move'); if (screen === 'dodge') MINI.pointer(e, 'move');
 });
 cv.addEventListener('pointerup', e => {
   if (screen === 'map' && mapView.drag) {
@@ -222,7 +223,7 @@ cv.addEventListener('pointerup', e => {
       const c = CITY_MAP.find(c => { const [cx, cy] = m.proj(c.lon, c.lat); return Math.hypot(cx - x, cy - y) < 12; });
       if (c) { const has = CASES.find(k => k.no === c.no); if (!has) return toast(`${c.zh}(${c.ko}) 사건은 준비 중이에요`); if (!unlocked(c.no)) return toast(`먼저 ${c.no - 1}과 사건을 해결해요`); openCase(c.no); } }
   }
-  if (screen === 'run') runPointer(e, 'up');
+  if (screen === 'run') runPointer(e, 'up'); if (screen === 'dodge') MINI.pointer(e, 'up');
 });
 
 /* ───────── 사건 편지 → 출발 ───────── */
@@ -319,6 +320,12 @@ function buildLevel(cs, boss) {
     });
   }
   [.3, .68].forEach(f => { const bx = f * L + 40; if (!near(bx)) objs.push({ k: 'bike', x: bx, hy: 30 }); });
+  if (!boss) {     // 골목 이벤트 (미니게임)
+    const ex = Math.round((gatesAt[1] + FORK_L + gatesAt[2]) / 2);
+    for (let i = objs.length - 1; i >= 0; i--) if ((objs[i].k === 'obs' || objs[i].k === 'pit') && Math.abs(objs[i].x - ex) < 90) objs.splice(i, 1);
+    R.pits = R.pits.filter(p => Math.abs(p.x - ex) >= 90);
+    objs.push({ k: 'event', x: ex, mg: 'dodge' });
+  }
   objs.push({ k: 'goal', x: L + 40 });
   return objs.sort((a, b) => a.x - b.x);
 }
@@ -438,6 +445,7 @@ function updateRun(dt) {
       if (sx + 20 > px0 && sx < px1 && GY - R.y - ph < by + 14 && GY - R.y > by) { o.gone = true; R.bike = 6; Sound.sfx('bike'); bikeCard(); }
     } else if (o.k === 'gate') {
       if (!o.passed) { if (forkStep(o, footX())) return; }
+    } else if (o.k === 'event' && !o.done && sx < PLAYER_X) { o.done = true; MINI.dodge(R.cs, R); return;
     } else if (o.k === 'goal' && sx < PLAYER_X) { R.done = true; return finishRun(); }
   }
   R.fx.forEach(f => { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 140 * dt; f.life -= dt; }); R.fx = R.fx.filter(f => f.life > 0);
@@ -501,6 +509,7 @@ function groundAt(fx) {
 }
 function forkStep(o, fx) {
   const d = fx - o.x, base = gh(o.x);
+  if (!o.opts) { o.opts = shuffle([o.gate.ans, o.gate.wrong[0]]); o.locked = []; o.lane = null; }
   if (o.lane == null && d >= FORK_IN) {
     let lane = R.ground ? 1 : 0;
     if (lane === 0 && o.locked.includes(0)) lane = 1;
@@ -636,7 +645,8 @@ function drawRun(t) {
     }
     else if (o.k === 'clue') { const y = GY - gh(o.x) - o.hy, b = Math.round(Math.sin(t / 180 + o.x) * 1.5); ctx.drawImage(ART.ITEM.clue, sx, Math.round(y) + b); if ((t / 120 | 0) % 6 === 0) PX.P(ctx, sx + 2, y + b, '#fff'); }
     else if (o.k === 'bike') { const y = Math.round(GY - gh(o.x) - o.hy); ctx.drawImage(ART.ITEM.bike, sx, y + Math.round(Math.sin(t / 200) * 1.5)); PX.R(ctx, sx + 6, y - 6, 10, 5, '#2a1d24'); PX.R(ctx, sx + 7, y - 5, 8, 3, '#f2b631'); }
-    else if (o.k === 'gate') drawFork(o, sx, t); else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
+    else if (o.k === 'gate') drawFork(o, sx, t);
+    else if (o.k === 'event' && !o.done) { const b = Math.round(gh(o.x)), y = GY - b; PX.R(ctx, sx + 7, y - 30, 2, 30, '#3b2a35'); for (let k = 0; k < 9; k++) PX.R(ctx, sx + 8 - k, y - 44 + k * 1.5, k * 2 + 1, 2, '#2a1d24'); for (let k = 1; k < 8; k++) PX.R(ctx, sx + 8 - k + 1, y - 42 + k * 1.5, k * 2 - 1, 2, '#ffd36e'); PX.text(ctx, '!', sx + 6, y - 40, 8, '#c0392b'); PX.R(ctx, sx - 4, y - 28, 24, 9, '#c0392b'); PX.text(ctx, '落物', sx - 3, y - 29, 8, '#fff6dc'); } else if (o.k === 'goal') { const b = Math.round(gh(o.x)); PX.R(ctx, sx, GY - b - 60, 3, 60, '#3b2a35'); PX.R(ctx, sx + 3, GY - b - 60, 20, 12, '#e2504c'); PX.R(ctx, sx + 5, GY - b - 58, 16, 8, '#fff'); PX.text(ctx, '终点', sx + 5, GY - b - 59, 7, '#e2504c'); }
   }
   const blink = R.inv > 0 && Math.floor(t / 80) % 2;
   if (!blink) {
@@ -923,6 +933,7 @@ function openMenu() {
 /* ───────── 매 프레임 ───────── */
 let last = performance.now();
 function loop(now) {
+  try {
   { const a = document.getElementById('app'); if (a.clientWidth + 'x' + a.clientHeight + '@' + (window.devicePixelRatio || 1) !== fitKey) { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; } }
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (screen === 'title') { titleT += dt; if (!THEME || THEME.name !== '重庆') { THEME = ART.THEMES.cq(); skyC = null; } drawTitle(now, titleT * 60); }
@@ -930,8 +941,10 @@ function loop(now) {
   else if (screen === 'office') drawOffice(now);
   else if (screen === 'intro' || screen === 'arrive' || screen === 'solved') drawScene(cur.theme, now, screen === 'intro' ? [] : arriveCast(now));
   else if (screen === 'run' && R) { updateRun(dt); if (R) drawRun(now); }
+  else if (screen === 'dodge') { MINI.update(dt); MINI.draw(now); }
   else if (screen === 'ladder' && LD) { updateLadder(dt); drawLadder(now); }
   else if (screen === 'check') drawCheck(now);
+  } catch (e) { console.error(e); }
   requestAnimationFrame(loop);
 }
 function drawTitle(t, dist) {

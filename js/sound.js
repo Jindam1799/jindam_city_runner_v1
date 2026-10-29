@@ -80,6 +80,8 @@ const Sound = (() => {
     rule: () => { const t = T(); noise(t, 0.15, 0.3, sfxGain, 'bandpass', 2200, 0.8); tone(N(84), t + 0.12, 0.2, 'pulse', 0.2); tone(N(88), t + 0.2, 0.25, 'pulse', 0.2); },
     caught: () => { const t = T(); [67, 71, 74, 79, 83, 86].forEach((n, i) => tone(N(n), t + i * 0.06, 0.25, 'pulse', 0.2)); },
     wind: () => noise(T(), 0.4, 0.25, sfxGain, 'bandpass', 1400, 0.5),
+    whoosh: () => { const t = T(); noise(t, 0.35, 0.18, sfxGain, 'bandpass', 900, 0.8); tone(900, t, 0.35, 'sine', 0.06, sfxGain, 0.4); },
+    splat: () => { const t = T(); noise(t, 0.18, 0.5, sfxGain, 'lowpass', 600); tone(180, t, 0.15, 'square', 0.15, sfxGain, 0.4); },
     whistle: () => { const t = T(); for (let i = 0; i < 2; i++) { const o = ac.createOscillator(), v = ac.createGain(), l = ac.createOscillator(), lg = ac.createGain(); o.type = 'sine'; o.frequency.value = 2600; l.frequency.value = 28; lg.gain.value = 180; l.connect(lg); lg.connect(o.frequency); v.gain.setValueAtTime(0.0001, t + i * .32); v.gain.linearRampToValueAtTime(0.22, t + i * .32 + 0.02); v.gain.setValueAtTime(0.22, t + i * .32 + (i ? .42 : .2)); v.gain.exponentialRampToValueAtTime(0.0001, t + i * .32 + (i ? .5 : .26)); o.connect(v); v.connect(sfxGain); o.start(t + i * .32); l.start(t + i * .32); o.stop(t + i * .32 + .55); l.stop(t + i * .32 + .55); } },
     crack: () => { const t = T(); noise(t, 0.08, 0.5, sfxGain, 'bandpass', 2500, 2); noise(t + 0.09, 0.3, 0.45, sfxGain, 'lowpass', 1200); tone(90, t + 0.05, 0.4, 'square', 0.2, sfxGain, 0.5); },
     cheer: () => { const t = T(); for (let i = 0; i < 6; i++) noise(t + i * 0.05, 0.08, 0.15, sfxGain, 'bandpass', 2000 + i * 400, 1); [84, 88, 91, 96].forEach((n, i) => tone(N(n), t + i * 0.07, 0.25, 'pulse', 0.2)); }
@@ -119,6 +121,9 @@ const Sound = (() => {
     check: { mode: 'min', bpm: 92, wave: 'pluck', style: 'walk', drum: 'k.h.k.h.',
       lead: 'A4:1 r:1 C5:1 r:1 E5:1 r:1 D5:2 C5:1 r:1 A4:1 r:1 B4:4 A4:1 r:1 C5:1 r:1 E5:1 G5:1 F5:2 E5:2 D5:2 E5:4',
       bass: 'A2 E2 F2 E2' },
+    dodge: { mode: 'maj', bpm: 160, wave: 'pulse', style: 'bounce', drum: 'k.hsk.hs',
+      lead: 'C5:1 C5:1 E5:1 G5:1 A5:1 G5:1 E5:2 D5:1 D5:1 F5:1 A5:1 C6:2 A5:2 G5:1 E5:1 C5:1 E5:1 G5:1 A5:1 G5:2 E5:1 D5:1 C5:1 D5:1 E5:2 C5:2',
+      bass: 'C3 F2 G2 C3' },
     win: { mode: 'maj', bpm: 150, wave: 'pulse', style: 'bounce', drum: 'k.k.s.ss', once: true,
       lead: 'C5:1 E5:1 G5:1 C6:3 A5:1 C6:1 E6:4 r:2 D6:1 C6:1 A5:1 C6:1 G5:6 r:2', bass: 'C3 F3 G3 C3' },
     fail: { mode: 'min', bpm: 110, wave: 'square', style: 'pluck', drum: '........', once: true,
