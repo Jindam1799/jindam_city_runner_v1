@@ -286,3 +286,18 @@ a { color: #3a7bd5; }
 .mc .front.ko { font-family: var(--ko); font-weight: normal; font-size: calc(3.8 * var(--u)); }
 .mc.up { background: #fff; transform: rotateY(180deg) scaleX(-1); } .mc.up .back { display: none; } .mc.up .front { display: block; }
 .mc.done { background: #c9f0d8; opacity: .75; }
+.blab { transform: translate(-50%, -50%); font-family: var(--zh); font-weight: 900; font-size: calc(4.8 * var(--u)); color: #fff; text-shadow: 0 0 calc(.6 * var(--u)) #1d1424, 0 0 calc(.6 * var(--u)) #1d1424; pointer-events: none; white-space: nowrap; }
+.vbtns { display: flex; gap: calc(2 * var(--u)); }
+#pad:not(.pad-run) .ctrl .vbtns, #pad .ctrl .vbtns { pointer-events: auto; }
+@media (orientation: portrait) { .ctrl .vbtns .cbtn { flex: 1; } .ctrl .vbtns { grid-column: 1; } }
+@media (orientation: landscape) { #pad.pad-run .vbtns { flex-direction: column; } #pad.pad-run .vbtns .cbtn { width: calc(16 * var(--u)); height: calc(16 * var(--u)); } }
+.mconn { left: 18%; right: 4%; top: 30%; display: grid; grid-template-columns: 1fr 1fr; column-gap: 22%; pointer-events: auto; }
+#pad .mconn { position: static; margin-top: calc(2 * var(--u)); column-gap: 10%; }
+.mconn .colL, .mconn .colR { display: grid; gap: calc(1.4 * var(--u)); }
+.mconn button, .mmaze button { font-family: var(--zh); font-weight: 900; font-size: calc(4.8 * var(--u)); padding: calc(1.2 * var(--u)); background: #fff; border: calc(.7 * var(--u)) solid var(--line); border-radius: calc(1.6 * var(--u)); box-shadow: 0 calc(.7 * var(--u)) 0 var(--line); }
+.mconn button.sel { background: #fff2c4; } .mconn button.done { background: #e5f4e4; }
+.mconn button.bad, .mmaze button.bad { background: #ffd2cc; animation: shake .3s; }
+.mmaze { left: 16%; right: 10%; top: 28%; bottom: 8%; display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(1.2 * var(--u)); pointer-events: auto; }
+#pad .mmaze { position: static; margin-top: calc(2 * var(--u)); }
+.mmaze button { font-size: calc(4.2 * var(--u)); background: #e8e4f4; }
+.mmaze button.on { background: #ffd36e; } .mmaze button.hint { background: #d9f5e5; animation: glow .6s infinite alternate; }
