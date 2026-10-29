@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.12.3 (2026.10.29)';
+const APP_VERSION = 'v0.12.4 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -1089,4 +1089,18 @@ function drawTitle(t, dist) {
 /* 카카오톡 등 앱 안 브라우저 안내 */
 if (/KAKAOTALK|Instagram|FBAN|FBAV|NAVER\(inapp/i.test(navigator.userAgent || '')) setTimeout(() => toast('소리가 안 나면 크롬·사파리에서 열어 주세요'), 1500);
 window.__cr = { get save() { return save; }, get R() { return R; }, get LD() { return LD; }, get screen() { return screen; }, openCase, startRun, startLadder, startCheck, get CK() { return CK; }, mapScreen, doJump, doSlide, meeting };
-fit(); titleScreen(); requestAnimationFrame(loop);
+/* 중국어 글꼴 미리 받기: 구글 글꼴은 글자가 처음 나올 때 조각을 내려받아서, 그 순간 화면이 멈칫해요.
+   게임에 나오는 모든 한자를 타이틀 화면에서 미리 한 번 그려 두면 플레이 중에는 멈추지 않아요. */
+function warmFonts() {
+  try {
+    const src = JSON.stringify([CASES, typeof CHECK !== 'undefined' ? CHECK : {}, STORY]) + '一二三四五六七八出发终点地铁线路图找不同拼图迷宫搭配气球密码广播小偷暗号停电落物检查站通过可疑嘘话';
+    const chars = [...new Set(src.match(/[\u3000-\u9fff\uff00-\uffef]/g) || [])].join('');
+    const box = document.createElement('div');
+    box.setAttribute('aria-hidden', 'true');
+    box.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+    box.innerHTML = `<span style="font-family:var(--zh);font-weight:700">${chars}</span><span style="font-family:var(--zh);font-weight:500">${chars}</span>`;
+    document.body.appendChild(box);
+    if (document.fonts && document.fonts.load) { document.fonts.load("700 20px 'Noto Sans SC'", chars).catch(() => {}); document.fonts.load("500 20px 'Noto Sans SC'", chars).catch(() => {}); }
+  } catch (e) {}
+}
+fit(); titleScreen(); requestAnimationFrame(loop); setTimeout(warmFonts, 300);
