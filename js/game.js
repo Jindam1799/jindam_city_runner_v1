@@ -701,7 +701,7 @@ function drawRun(t) {
     if (o.k === 'obs') {
       const base = Math.round(gh(o.x + o.w / 2));
       if (o.roll) ctx.drawImage(o.ob.fr[((Math.floor(o.x / 4) % 4) + 4) % 4], sx, GY - base - 17);
-      else if (o.bird) ctx.drawImage(ART.BIRD[Math.floor(t / 140) % 2], sx, Math.round(GY - base - birdY(o) - o.h - 1));
+      else if (o.bird) ctx.drawImage(PX.flip(ART.BIRD[Math.floor(t / 140) % 2]), sx, Math.round(GY - base - birdY(o) - o.h - 1));
       else if (o.tunnel) ctx.drawImage(o.tc, sx, GY - base - 18 - 46 + 1 - 2);
       else ctx.drawImage(o.ob.c, sx, o.high ? GY - base - 18 - o.ob.c.height : GY - base - o.ob.c.height + 1);
     }
