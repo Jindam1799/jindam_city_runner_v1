@@ -12,10 +12,11 @@ const MINI = (() => {
   SPR.coin = [0, 1, 2, 3].map(f => { const [c, g] = PX.mk(22, 22); const w = [10, 7, 3, 7][f]; PX.ellipse(g, 11, 11, w, 10, '#c48a18'); PX.ellipse(g, 11, 11, Math.max(1, w - 1), 9, '#f2c14e'); if (w > 4) PX.ellipse(g, 11, 11, w - 3, 7, '#ffd36e'); PX.R(g, 11 - Math.floor(w / 2), 4, 2, 2, '#fff6dc'); return PX.outline(c); });
   const JUNK = ['poop', 'poop', 'stone', 'can', 'peel', 'bottle'];
 
-  let D = null;
+  let D = null, CUR = null;
+  function backToRun() { CUR = null; go('run'); Sound.bgm(R.boss ? 'hq' : R.cs.theme); runPad(); setTop(); R.gateNow = null; }
   /* ── 골목 피하기 시작 ── */
   async function dodge(cs, run) {
-    go('dodge'); Sound.bgm('dodge');
+    go('mini'); Sound.bgm('dodge'); CUR = 'dodge';
     const pool = cs.clues.map((c, i) => i);
     const targets = shuffle(pool).slice(0, 3);
     D = { cs, run, t: 0, x: W / 2 - 11, dir: 0, face: 1, items: [], spawn: .6, tgt: targets, ti: 0, got: 0, need: 3, done: false, hurtT: 0, inv: 0, end: 0, wins: [], miss: 0 };
@@ -96,8 +97,7 @@ const MINI = (() => {
     msg(timeout ? '⏰ 시간 끝! 골목을 빠져나왔어요' : `🎉 단어 동전 ${D.need}개 성공!${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, 'ok', 2000);
     R.mini = (R.mini || []).concat({ k: 'dodge', got: D.got, miss: D.miss });
     await sleep(1600);
-    D = null;
-    go('run'); Sound.bgm(R.boss ? 'hq' : R.cs.theme); runPad(); setTop(); R.gateNow = null;
+    D = null; backToRun();
   }
   function draw(t) {
     if (!D) return;
@@ -141,5 +141,207 @@ const MINI = (() => {
     if (k === 'up') { D.dir = 0; return; }
     if (k === 'down' || (k === 'move' && e.buttons)) { const r = cv.getBoundingClientRect(); D.dir = (e.clientX - r.left) < r.width / 2 ? -1 : 1; }
   }
-  return { dodge, update, draw, key, pointer, get D() { return D; } };
+  const DODGE = { update, draw, key, pointer };
+
+  /* 공통: 미니게임 위 칸 (하트 · 목표 · 질문 · 메시지) */
+  function topPad(goal, extra = '') {
+    pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">${goal}</span><span id="dt"></span></div><div id="gq" class="on"></div><div id="msg"></div></div>${extra}`;
+    const h = $('#hearts'); h.innerHTML = '❤'.repeat(Math.max(0, R.hearts)) + '<span class="off">' + '❤'.repeat(3 - Math.max(0, R.hearts)) + '</span>';
+  }
+  const gameXY = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+  async function tut(key, html) { if (save[key]) return; save[key] = 1; persist(); const c = card(html + '<div class="row"><button class="big go">시작!</button></div>'); await wait(c); }
+
+  /* ───── 🔦 손전등 단서 찾기: 깜깜한 골목에서 뜻에 맞는 단서 쪽지를 찾아 눌러요 ───── */
+  const FLASH = (() => {
+    let F = null;
+    const DARK = () => { const [c, g] = PX.mk(W, H); return [c, g]; };
+    function props(r) {           // 골목 소품 배치
+      const list = [], kinds = ['bin', 'crate', 'bike', 'door', 'poster', 'pipe', 'cat', 'crate', 'bin', 'poster'];
+      for (let x = 8; x < W - 30; x += 34 + ((r() * 16) | 0)) list.push({ k: kinds[(r() * kinds.length) | 0], x });
+      return list;
+    }
+    function start(cs, run) {
+      go('mini'); CUR = 'flash'; Sound.bgm('flash');
+      const r = PX.rng((Math.random() * 1e6) | 0);
+      const ids = shuffle(cs.clues.map((c, i) => i)), tgt = ids.slice(0, 3), dec = ids.slice(3, 7);
+      const tags = [];
+      shuffle(tgt.concat(dec)).forEach(ci => {
+        for (let k = 0; k < 40; k++) { const x = 16 + Math.random() * (W - 60), y = 58 + Math.random() * (GY - 82); if (tags.every(t => Math.hypot(t.x - x, t.y - y) > 40)) { tags.push({ ci, x, y, rot: (Math.random() - .5) * .3, found: false }); break; } }
+      });
+      F = { cs, tgt, ti: 0, tags, props: props(r), lx: W / 2, ly: H / 2, t: 0, bat: 40, got: 0, miss: 0, done: false, flick: 0 };
+      topPad('🔦 0/3', `<div class="small center">화면을 끌어서 손전등을 비추고, 맞는 쪽지를 눌러요</div>`);
+      prompt();
+      tut('tutFlash', `<h2>🔦 깜깜한 골목!</h2><div class="t">정전이 됐어요! 손전등으로 골목을 비춰요.</div><div class="small" style="margin:1em 0;font-size:1.1em">손가락으로 화면을 <b>끌면</b> 불빛이 따라와요.<br>위에 적힌 <b>뜻에 맞는 중국어 쪽지</b>를 찾아서 <b>눌러요</b>!</div><div class="t">🔋 배터리가 다 닳기 전에 3개를 찾아요.</div>`);
+    }
+    function prompt() { const c = F.cs.clues[F.tgt[F.ti]]; $('#gq').innerHTML = `🔦 「${esc(c[2])}」 쪽지를 찾아요!`; }
+    function hud() { $('#dg').textContent = `🔦 ${F.got}/3`; $('#dt').textContent = `🔋 ${Math.ceil(F.bat)}초`; }
+    function update(dt) {
+      if (!F || F.done || R.paused || uiRoot.querySelector('.card,.box')) return;
+      F.t += dt; F.bat -= dt; F.flick = F.bat < 8 && Math.random() < .08 ? .08 : Math.max(0, F.flick - dt);
+      if (Math.floor(F.t * 4) !== F._h) { F._h = Math.floor(F.t * 4); hud(); }
+      if (F.bat <= 0) end(true);
+    }
+    function tap(x, y) {
+      const rad = 30, hitTag = F.tags.find(t => !t.found && x > t.x - 4 && x < t.x + 30 && y > t.y - 4 && y < t.y + 20);
+      if (hitTag && Math.hypot(hitTag.x + 13 - F.lx, hitTag.y + 8 - F.ly) < rad + 8) {
+        const c = F.cs.clues[hitTag.ci];
+        if (hitTag.ci === F.tgt[F.ti]) { hitTag.found = true; F.got++; Sound.sfx('clue'); speak(c[0]); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1500); hud(); if (F.got >= 3) return end(false); F.ti++; prompt(); }
+        else { F.miss++; Sound.sfx('bad'); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); F.bat = Math.max(1, F.bat - 3); }
+        return;
+      }
+      F.lx = x; F.ly = y; Sound.sfx('click');
+    }
+    async function end(timeout) {
+      F.done = true; Sound.sfx(timeout ? 'bad' : 'cheer');
+      const bonus = !timeout && F.miss === 0 && R.hearts < 3; if (bonus) R.hearts++;
+      msg(timeout ? '🔋 배터리가 다 됐어요! 다음엔 더 빨리 찾아 봐요' : `🎉 단서 쪽지 3개 발견!${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, timeout ? 'no' : 'ok', 2000);
+      R.mini = (R.mini || []).concat({ k: 'flash', got: F.got, miss: F.miss });
+      await sleep(1700); F = null; backToRun();
+    }
+    function drawProp(p) {
+      const y = GY;
+      if (p.k === 'bin') { PX.R(ctx, p.x, y - 22, 20, 22, '#3f6a4a'); PX.R(ctx, p.x - 1, y - 24, 22, 3, '#2f5038'); for (let k = 2; k < 20; k += 4) PX.R(ctx, p.x + k, y - 20, 1, 18, '#2f5038'); }
+      if (p.k === 'crate') { PX.R(ctx, p.x, y - 16, 18, 16, '#8a5a30'); PX.R(ctx, p.x, y - 16, 18, 2, '#a8744e'); PX.line(ctx, p.x, y - 14, p.x + 17, y - 1, '#6a4020'); PX.R(ctx, p.x + 3, y - 30, 14, 14, '#9a6a3a'); PX.R(ctx, p.x + 3, y - 30, 14, 2, '#b8834a'); }
+      if (p.k === 'bike') { PX.disc(ctx, p.x + 4, y - 5, 4, '#2a2430'); PX.disc(ctx, p.x + 20, y - 5, 4, '#2a2430'); PX.line(ctx, p.x + 4, y - 5, p.x + 12, y - 12, '#f2b631', 2); PX.line(ctx, p.x + 12, y - 12, p.x + 20, y - 5, '#f2b631', 2); }
+      if (p.k === 'door') { PX.R(ctx, p.x, y - 46, 22, 46, '#4a3040'); PX.R(ctx, p.x + 2, y - 44, 18, 44, '#6a4050'); PX.R(ctx, p.x + 16, y - 24, 2, 2, '#f2c14e'); PX.R(ctx, p.x - 2, y - 50, 26, 4, '#3a2030'); }
+      if (p.k === 'poster') { PX.R(ctx, p.x, y - 70, 20, 26, '#e2504c'); PX.R(ctx, p.x + 2, y - 68, 16, 10, '#ffd36e'); PX.R(ctx, p.x + 3, y - 54, 14, 2, '#fff6dc'); PX.R(ctx, p.x + 3, y - 50, 10, 2, '#fff6dc'); }
+      if (p.k === 'pipe') { PX.R(ctx, p.x + 8, 20, 4, GY - 20, '#5a5a6a'); PX.R(ctx, p.x + 8, 60, 4, 2, '#3a3a4a'); PX.R(ctx, p.x + 8, 110, 4, 2, '#3a3a4a'); }
+      if (p.k === 'cat') { PX.ellipse(ctx, p.x + 10, y - 5, 7, 4, '#2a2430'); PX.disc(ctx, p.x + 16, y - 10, 3, '#2a2430'); PX.R(ctx, p.x + 14, y - 14, 1, 2, '#2a2430'); PX.R(ctx, p.x + 18, y - 14, 1, 2, '#2a2430'); PX.line(ctx, p.x + 3, y - 6, p.x, y - 14, '#2a2430'); }
+    }
+    function draw(t) {
+      if (!F) return;
+      // 밤 골목
+      PX.R(ctx, 0, 0, W, H, '#2a2238');
+      for (let y = 12; y < GY; y += 8) for (let x = ((y / 8) % 2) * 8; x < W; x += 16) { PX.R(ctx, x, y, 15, 7, '#3a3048'); PX.R(ctx, x, y, 15, 1, '#463a56'); }
+      PX.R(ctx, 0, 0, W, 12, '#120c1c'); for (let i = 0; i < 20; i++) PX.P(ctx, (i * 53) % W, (i * 7) % 10, '#fff6dc');
+      F.props.forEach(drawProp);
+      PX.R(ctx, 0, GY, W, H - GY, '#3a3442'); for (let x = 0; x < W; x += 12) PX.R(ctx, x, GY + 6, 8, 1, '#2a2432');
+      // 쪽지
+      F.tags.forEach(tg => {
+        if (tg.found) return;
+        const c = F.cs.clues[tg.ci], x = Math.round(tg.x), y = Math.round(tg.y);
+        PX.R(ctx, x, y, 28, 17, '#e8dcc0'); PX.R(ctx, x, y, 28, 2, '#fff6dc'); PX.R(ctx, x + 12, y - 2, 4, 3, '#e2504c');
+        PX.text(ctx, c[0], x + (c[0].length > 1 ? 2 : 9), y + 1, c[0].length > 2 ? 8 : 11, '#2a1d24');
+      });
+      // 어둠 (손전등 불빛만 보임)
+      const [dc, dg] = F._dark && F._dark[0].width === W ? F._dark : (F._dark = DARK());
+      dg.globalCompositeOperation = 'source-over'; dg.clearRect(0, 0, W, H); dg.fillStyle = F.flick > 0 ? 'rgba(6,4,12,1)' : 'rgba(6,4,12,.988)'; dg.fillRect(0, 0, W, H);
+      dg.globalCompositeOperation = 'destination-out';
+      const lx = Math.round(F.lx), ly = Math.round(F.ly);
+      if (F.flick <= 0) { dg.fillStyle = 'rgba(0,0,0,.5)'; PX.disc(dg, lx, ly, 36, 'rgba(0,0,0,.45)'); PX.disc(dg, lx, ly, 30, '#000'); }
+      dg.globalCompositeOperation = 'source-over';
+      ctx.drawImage(dc, 0, 0);
+      if (F.flick <= 0) { ctx.fillStyle = 'rgba(255,240,180,.10)'; PX.disc(ctx, lx, ly, 30, 'rgba(255,240,180,.08)'); }
+      // 民浩 (손전등 든 모습)
+      const im = PX.person('minhao', 'think', 0); ctx.drawImage(im, 8, GY - PX.SH + 1);
+      PX.R(ctx, 26, GY - 26, 5, 3, '#ffd36e');
+    }
+    function pointer(e, k) {
+      if (!F || F.done) return;
+      const [x, y] = gameXY(e);
+      if (k === 'move' && (e.buttons || e.pointerType === 'mouse')) { F.lx = x; F.ly = y; F.drag = (F.drag || 0) + 1; }
+      if (k === 'down') { F.drag = 0; F.dx = x; F.dy = y; }
+      if (k === 'up' && (F.drag || 0) < 6) tap(x, y);
+    }
+    return { start, update, draw, pointer, get F() { return F; } };
+  })();
+
+  /* ───── 🚇 지하철 노선 잇기: 덩어리 역을 순서대로 이어서 문장 열차를 완성해요 ───── */
+  const SUBWAY = (() => {
+    let M = null;
+    const LINE = ['#e2504c', '#4f8fdc', '#5fae6e', '#f2b631'];
+    function start(cs, run) {
+      go('mini'); CUR = 'subway'; Sound.bgm('subway');
+      M = { cs, round: 0, rounds: [2, 4].filter(i => cs.ladder[i]), miss: 0, t: 0, done: false };
+      topPad('🚇 0/2', `<div class="small center">출발역부터 다음 역(덩어리)을 차례대로 눌러 노선을 이어요</div>`);
+      setup();
+      tut('tutSubway', `<h2>🚇 지하철 노선 잇기!</h2><div class="t">문장 열차가 출발하려면 노선이 필요해요.</div><div class="small" style="margin:1em 0;font-size:1.1em">🚉 <b>出发(출발)</b>에서 시작해서<br>뜻에 맞게 <b>덩어리 역을 순서대로</b> 눌러요.<br>마지막 역까지 이으면 열차가 달려요!</div><div class="t">⚠ 함정 역도 하나 섞여 있어요.</div>`);
+    }
+    function setup() {
+      const st = M.cs.ladder[M.rounds[M.round]];
+      const decoy = pick(M.cs.clues.filter(c => !st.t.join('').includes(c[0])))[0];
+      const toks = st.t.map((t, i) => ({ t, i })).concat([{ t: decoy, i: -1 }]);
+      const cols = Math.max(4, Math.ceil(toks.length / 2) + 1), cells = [];
+      for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) cells.push([c, r]);
+      const pos = shuffle(cells).slice(0, toks.length);
+      const x0 = 56, x1 = W - 56, y0 = 76, y1 = GY - 26;
+      M.st = st; M.next = 0; M.path = [{ x: 22, y: (y0 + y1) / 2, t: '出发' }];
+      M.stations = toks.map((k, j) => ({ ...k, x: x0 + (pos[j][0] + .5) * (x1 - x0) / cols + (Math.random() * 10 - 5), y: y0 + pos[j][1] * (y1 - y0) + (Math.random() * 8 - 4), on: false }));
+      M.end = { x: W - 22, y: (y0 + y1) / 2, t: '终点' };
+      M.train = null; M.col = LINE[M.round % LINE.length];
+      ov.querySelectorAll('.stlab').forEach(x => x.remove());
+      M.stations.forEach(s => { s.lab = el(`<button class="stlab">${esc(s.t)}</button>`); s.lab.onclick = () => tapSt(s); ov.appendChild(s.lab); });
+      [M.path[0], M.end].forEach(s => { s.lab = el(`<div class="stlab fixed">${s.t}</div>`); ov.appendChild(s.lab); });
+      $('#gq').innerHTML = `🚇 "${esc(st.ko)}"`;
+      $('#dg').textContent = `🚇 ${M.round}/${M.rounds.length}`;
+    }
+    function tapSt(s) {
+      if (M.done || M.train || s.on) return;
+      if (s.i === M.next) {
+        s.on = true; s.lab.classList.add('on'); M.path.push(s); M.next++; Sound.sfx('ding'); speak(s.t);
+        if (M.next >= M.st.t.length) { M.path.push(M.end); M.train = { d: 0 }; Sound.sfx('train'); }
+      } else {
+        M.miss++; Sound.sfx('bad'); s.lab.classList.remove('bad'); void s.lab.offsetWidth; s.lab.classList.add('bad');
+        msg(s.i < 0 ? `✖ 「${esc(s.t)}」은(는) 함정 역이에요!` : `✖ 「${esc(s.t)}」은(는) 다음 역이 아니에요`, 'no', 1400);
+      }
+    }
+    const pathLen = () => { let L = 0; for (let i = 1; i < M.path.length; i++) L += Math.hypot(M.path[i].x - M.path[i - 1].x, M.path[i].y - M.path[i - 1].y); return L; };
+    function at(d) { for (let i = 1; i < M.path.length; i++) { const a = M.path[i - 1], b = M.path[i], l = Math.hypot(b.x - a.x, b.y - a.y); if (d <= l) return [a.x + (b.x - a.x) * d / l, a.y + (b.y - a.y) * d / l, b.x > a.x ? 1 : -1]; d -= l; } const e = M.path[M.path.length - 1]; return [e.x, e.y, 1]; }
+    async function update(dt) {
+      if (!M || M.done || R.paused || uiRoot.querySelector('.card,.box')) return;
+      M.t += dt;
+      if (M.train && !M.train.arrived) {
+        M.train.d += dt * 150;
+        if (M.train.d >= pathLen()) {
+          M.train.arrived = true; const full = M.st.t.join(''); speak(full); Sound.sfx('open');
+          msg(`⭕ <b>${esc(full)}</b>`, 'ok', 2200); M.round++; $('#dg').textContent = `🚇 ${M.round}/${M.rounds.length}`;
+          await sleep(2000);
+          if (!M) return;
+          if (M.round >= M.rounds.length) return end(); setup();
+        }
+      }
+    }
+    async function end() {
+      M.done = true; ov.querySelectorAll('.stlab').forEach(x => x.remove()); Sound.sfx('cheer');
+      const bonus = M.miss === 0 && R.hearts < 3; if (bonus) R.hearts++;
+      msg(`🎉 문장 열차 ${M.rounds.length}대 출발 완료!${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, 'ok', 2000);
+      R.mini = (R.mini || []).concat({ k: 'subway', miss: M.miss });
+      await sleep(1600); M = null; backToRun();
+    }
+    function draw(t) {
+      if (!M) return;
+      PX.R(ctx, 0, 0, W, H, '#1d2a44');
+      for (let x = 0; x < W; x += 16) PX.R(ctx, x, 0, 1, H, '#243354'); for (let y = 0; y < H; y += 16) PX.R(ctx, 0, y, W, 1, '#243354');
+      PX.R(ctx, 0, GY + 4, W, H - GY - 4, '#141c30'); PX.text(ctx, '地铁线路图', 6, GY + 6, 9, '#7f9ac8');
+      // 놓인 노선
+      for (let i = 1; i < M.path.length; i++) { const a = M.path[i - 1], b = M.path[i]; PX.line(ctx, a.x, a.y, b.x, b.y, '#0e1424', 7); PX.line(ctx, a.x, a.y, b.x, b.y, M.col, 4); }
+      // 역
+      const all = [M.path[0], ...M.stations, M.end];
+      all.forEach(s => {
+        const on = s.on || s === M.path[0] || (s === M.end && M.train);
+        PX.disc(ctx, Math.round(s.x), Math.round(s.y), 6, '#0e1424'); PX.disc(ctx, Math.round(s.x), Math.round(s.y), 5, on ? M.col : '#ffffff'); PX.disc(ctx, Math.round(s.x), Math.round(s.y), 2, on ? '#ffffff' : '#8a9ac0');
+        if (s.lab) { s.lab.style.left = gx(s.x) + 'px'; s.lab.style.top = gx(s.y - 12) + 'px'; }
+      });
+      // 다음 역 안내 (깜빡)
+      if (!M.train && Math.floor(t / 400) % 2) { const last = M.path[M.path.length - 1]; PX.disc(ctx, Math.round(last.x), Math.round(last.y), 8, 'rgba(255,255,255,.25)'); }
+      // 열차
+      if (M.train) {
+        const [x, y, dir] = at(M.train.d), tx = Math.round(x - 10), ty = Math.round(y - 6);
+        PX.R(ctx, tx, ty, 20, 10, '#0e1424'); PX.R(ctx, tx + 1, ty + 1, 18, 8, '#f4f1ea'); PX.R(ctx, tx + 1, ty + 6, 18, 2, M.col);
+        for (let k = 0; k < 3; k++) PX.R(ctx, tx + 3 + k * 5, ty + 2, 3, 3, '#4f8fdc');
+        PX.R(ctx, dir > 0 ? tx + 17 : tx + 1, ty + 2, 2, 3, '#ffd36e');
+      }
+    }
+    return { start, update, draw };
+  })();
+
+  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY };
+  return {
+    start(k, cs, run) { if (k === 'flash') return FLASH.start(cs, run); if (k === 'subway') return SUBWAY.start(cs, run); return dodge(cs, run); },
+    update(dt) { if (CUR && GAMES[CUR]) GAMES[CUR].update(dt); },
+    draw(t) { if (CUR && GAMES[CUR]) GAMES[CUR].draw(t); },
+    key(e, d) { if (CUR && GAMES[CUR].key) GAMES[CUR].key(e, d); },
+    pointer(e, k) { if (CUR && GAMES[CUR].pointer) GAMES[CUR].pointer(e, k); },
+    get D() { return D; }, get cur() { return CUR; }
+  };
 })();

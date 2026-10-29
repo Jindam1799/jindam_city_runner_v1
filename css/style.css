@@ -244,3 +244,7 @@ a { color: #3a7bd5; }
 #pad.asking .cbtn .opt i { display: block; font-style: normal; font-family: var(--ko); font-weight: normal; font-size: calc(2.4 * var(--u)); color: #5a4a5c; }
 #pad.asking .cbtn .opt.pick { color: #1f5aa8; text-decoration: underline; }
 .coinlab { transform: translate(-50%, -50%); font-family: var(--zh); font-weight: 700; font-size: calc(3.2 * var(--u)); color: #5a3a10; white-space: nowrap; text-shadow: 0 0 calc(.6 * var(--u)) #fff6dc; pointer-events: none; }
+.stlab { transform: translate(-50%, -100%); pointer-events: auto; font-family: var(--zh); font-weight: 700; font-size: calc(3.4 * var(--u)); padding: calc(.6 * var(--u)) calc(1.6 * var(--u)); background: #fff; border: calc(.5 * var(--u)) solid #0e1424; border-radius: calc(1.4 * var(--u)); white-space: nowrap; cursor: pointer; box-shadow: 0 calc(.6 * var(--u)) 0 #0e1424; }
+.stlab.on { background: #d9f5e5; } .stlab.fixed { background: #ffd36e; pointer-events: none; }
+.stlab.bad { background: #ffd2cc; animation: shake .3s; }
+#ov .stlab { position: absolute; }
