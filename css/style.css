@@ -353,3 +353,8 @@ a { color: #3a7bd5; }
 .plab u { text-decoration: none; color: #c0392b; letter-spacing: .05em; }
 .mbtn.pbtn { left: 16%; right: 16%; top: auto; bottom: 3%; grid-template-columns: 1fr 1fr 1fr; }
 #pad .mbtn.pbtn { grid-template-columns: 1fr 1fr 1fr; }
+/* 미니게임: 가로 화면에서는 메시지를 아래쪽(땅)으로 → 위쪽 창문·풍선을 가리지 않게 */
+@media (orientation: landscape) {
+  #pad.pad-mini > #msg { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 1.2 * var(--u)); width: min(50%, calc(110 * var(--u))); pointer-events: none; opacity: .96; }
+}
+@media (orientation: portrait) { #pad > #msg { margin-top: calc(1 * var(--u)); } }

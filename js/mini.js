@@ -29,7 +29,7 @@ const MINI = (() => {
     const st = pick(cs.ladder.filter(l => l.t.length >= 2 && l.t.length <= 3)) || cs.ladder[1];
     D = { cs, run, t: 0, x: W / 2 - 11, dir: 0, face: 1, items: [], spawn: .6, st, toks: st.t, ti: 0, got: 0, need: st.t.length, done: false, hurtT: 0, inv: 0, end: 0, wins: [], miss: 0, combo: 0 };
     for (let i = 0; i < 8; i++) D.wins.push({ x: 14 + i * ((W - 40) / 7), who: pick(['auntie', 'uncle', 'grandpa', 'student']), show: 0 });
-    pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">🎯 0/3</span><span id="dt"></span></div><div id="gq" class="on"></div><div id="msg"></div></div>
+    pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">🎯 0/3</span><span id="dt"></span></div><div id="gq" class="on"></div></div><div id="msg" class="mmsg"></div>
       <div class="ctrl"><button class="cbtn slide" id="bL">◀<small>왼쪽</small></button><button class="cbtn jump" id="bR">▶<small>오른쪽</small></button></div>
       <div class="small center">버튼을 꾹 누르거나 화면 왼쪽·오른쪽을 눌러요 · 키보드 ← →</div>`;
     const hold = (b, d) => { b.addEventListener('pointerdown', e => { e.preventDefault(); D.dir = d; }); ['pointerup', 'pointerleave', 'pointercancel'].forEach(k => b.addEventListener(k, () => { if (D.dir === d) D.dir = 0; })); };
@@ -155,7 +155,7 @@ const MINI = (() => {
 
   /* 공통: 미니게임 위 칸 (하트 · 목표 · 질문 · 메시지) */
   function topPad(goal, extra = '') {
-    pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">${goal}</span><span id="dt"></span></div><div id="gq" class="on"></div><div id="msg"></div></div>${extra}`;
+    pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="dg">${goal}</span><span id="dt"></span></div><div id="gq" class="on"></div></div><div id="msg" class="mmsg"></div>${extra}`;
     const h = $('#hearts'); h.innerHTML = '❤'.repeat(Math.max(0, R.hearts)) + '<span class="off">' + '❤'.repeat(3 - Math.max(0, R.hearts)) + '</span>';
   }
   const gameXY = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
