@@ -125,7 +125,7 @@ const MINI = (() => {
     });
     // 民浩
     if (!(D.inv > 0 && Math.floor(t / 80) % 2)) {
-      let im = D.hurtT > 0 ? PX.person('minhao', 'hurt') : D.dir ? PX.person('minhao', 'run', Math.floor(t / 80) % 6) : PX.person('minhao', 'stand', 0, (t % 3000) < 120 ? 'blink' : undefined);
+      let im = D.hurtT > 0 ? PX.person(PL(), 'hurt') : D.dir ? PX.person(PL(), 'run', Math.floor(t / 80) % 6) : PX.person(PL(), 'stand', 0, (t % 3000) < 120 ? 'blink' : undefined);
       if (D.face < 0) im = PX.flip(im);
       ctx.drawImage(im, Math.round(D.x), GY - PX.SH + 1);
     }
@@ -233,7 +233,7 @@ const MINI = (() => {
       ctx.drawImage(dc, 0, 0);
       if (F.flick <= 0) { ctx.fillStyle = 'rgba(255,240,180,.10)'; PX.disc(ctx, lx, ly, 30, 'rgba(255,240,180,.08)'); }
       // 民浩 (손전등 든 모습)
-      const im = PX.person('minhao', 'think', 0); ctx.drawImage(im, 8, GY - PX.SH + 1);
+      const im = PX.person(PL(), 'think', 0); ctx.drawImage(im, 8, GY - PX.SH + 1);
       PX.R(ctx, 26, GY - 26, 5, 3, '#ffd36e');
     }
     function pointer(e, k) {
@@ -335,9 +335,190 @@ const MINI = (() => {
     return { start, update, draw };
   })();
 
-  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY };
+  /* 공통 끝내기 */
+  async function finishMini(kind, ok, extra, text) {
+    Sound.sfx(ok ? 'cheer' : 'bad');
+    const bonus = ok && extra.miss === 0 && R.hearts < 3; if (bonus) R.hearts++;
+    msg(`${text}${bonus ? ' 실수 없음 보너스 ❤ +1' : ''}`, ok ? 'ok' : 'no', 2000);
+    R.mini = (R.mini || []).concat({ k: kind, ...extra });
+    document.querySelectorAll('.mbtn,.wlab').forEach(x => x.remove());
+    await sleep(1700); backToRun();
+  }
+  const optBtns = (opts, onPick, cls = '') => {
+    document.querySelectorAll('.mbtn').forEach(x => x.remove());
+    const wrap = el(`<div class="mbtn ${cls}">${opts.map((o, i) => `<button data-i="${i}">${o}</button>`).join('')}</div>`);
+    wrap.querySelectorAll('button').forEach(b => b.onclick = () => onPick(+b.dataset.i, b));
+    (LAND ? ov : pad).appendChild(wrap); return wrap;
+  };
+
+  /* ───── 👊 두더지 단원 잡기: 창문에서 튀어나오는 단원 중, 뜻에 맞는 단어를 든 단원만 콕! ───── */
+  const WHACK = (() => {
+    let K = null;
+    function start(cs) {
+      go('mini'); CUR = 'whack'; Sound.bgm('dodge');
+      const tgt = shuffle(cs.clues.map((c, i) => i)).slice(0, 3);
+      const holes = []; const cols = 4, rows = 2;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) holes.push({ x: Math.round(W * (c + .5) / cols) - 13, y: 84 + r * 50, up: 0, who: null });
+      K = { cs, tgt, ti: 0, got: 0, miss: 0, holes, t: 0, spawn: .5, done: false, fx: [] };
+      topPad('👊 0/3', `<div class="small center">튀어나온 사람을 눌러요 · 시민은 누르면 안 돼요!</div>`);
+      prompt();
+      tut('tutWhack', `<h2>👊 단원 잡기!</h2><div class="t">무음단 단원들이 창문에서 불쑥불쑥 나타나요.</div><div class="small" style="margin:1em 0;font-size:1.1em">🕶 <b>단원</b>이 들고 있는 단어 중<br>위에 적힌 <b>뜻에 맞는 단어</b>를 든 단원만 콕!<br>🙂 시민(친구)은 누르면 안 돼요.</div>`);
+    }
+    function prompt() { const c = K.cs.clues[K.tgt[K.ti]]; $('#gq').innerHTML = `👊 「${esc(c[2])}」 단어를 든 단원을 잡아요!`; $('#dg').textContent = `👊 ${K.got}/3`; }
+    function pop() {
+      const free = K.holes.filter(h => !h.who); if (!free.length) return;
+      const h = pick(free), r = Math.random();
+      const gang = r < .78, right = gang && Math.random() < .5;
+      const ci = right ? K.tgt[K.ti] : pick(K.cs.clues.map((c, i) => i).filter(i => i !== K.tgt[K.ti]));
+      h.who = { gang, ci, look: gang ? 'club' : pick(['xiaomei', 'xiaoyu', 'grandpa', 'auntie']), life: 1.5 + Math.random() * .5, hit: 0 };
+      h.lab = el(`<div class="wlab ${gang ? '' : 'civ'}">${gang ? esc(K.cs.clues[ci][0]) : '🙂'}</div>`); ov.appendChild(h.lab);
+    }
+    function update(dt) {
+      if (!K || K.done || R.paused || uiRoot.querySelector('.card,.box')) return;
+      K.t += dt; K.spawn -= dt; if (K.spawn <= 0) { pop(); K.spawn = Math.max(.45, .9 - K.t * .015); }
+      K.holes.forEach(h => {
+        if (!h.who) { h.up = Math.max(0, h.up - dt * 6); return; }
+        h.up = Math.min(1, h.up + dt * 6); h.who.life -= dt;
+        if (h.who.life <= 0 || h.who.hit && h.who.hit < K.t - .5) { h.who = null; if (h.lab) { h.lab.remove(); h.lab = null; } }
+      });
+      if (K.t > 40) end(false);
+    }
+    function tap(x, y) {
+      const h = K.holes.find(h => h.who && !h.who.hit && x > h.x - 4 && x < h.x + 30 && y > h.y - 32 && y < h.y + 10);
+      if (!h) return;
+      const w = h.who; w.hit = K.t;
+      if (!w.gang) { K.miss++; Sound.sfx('bad'); msg('🙂 앗, 시민이에요! 단원만 잡아요', 'no', 1300); return; }
+      const c = K.cs.clues[w.ci];
+      if (w.ci === K.tgt[K.ti]) { K.got++; Sound.sfx('smash'); speak(c[0]); msg(`🚔 잡았다! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1400); if (K.got >= 3) return end(true); K.ti++; prompt(); }
+      else { K.miss++; Sound.sfx('lock'); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
+    }
+    function end(ok) { K.done = true; ov.querySelectorAll('.wlab').forEach(x => x.remove()); const k = K; K = null; finishMini('whack', ok, { got: k.got, miss: k.miss }, ok ? '🎉 단원 3명 체포!' : '⏰ 시간 끝! 단원들이 숨어 버렸어요'); }
+    function draw(t) {
+      if (!K) return;
+      if (skyC) ctx.drawImage(skyC, 0, 0);
+      PX.R(ctx, 0, 40, W, GY - 40, '#b89a80'); for (let y = 40; y < GY; y += 10) PX.R(ctx, 0, y, W, 1, '#a8866a');
+      K.holes.forEach(h => {
+        PX.R(ctx, h.x - 4, h.y - 34, 34, 38, '#3b2a35'); PX.R(ctx, h.x - 2, h.y - 32, 30, 34, '#2a1d2e');
+        if (h.who) {
+          const dy = Math.round((1 - h.up) * 30), im = PX.person(h.who.look, h.who.hit ? 'hurt' : 'stand', 0, h.who.hit ? 'hurt' : undefined);
+          ctx.save(); ctx.beginPath(); ctx.rect(h.x - 2, h.y - 32, 30, 34); ctx.clip(); ctx.drawImage(im, h.x, h.y - 30 + dy); ctx.restore();
+          if (h.lab) { h.lab.style.left = gx(h.x + 13) + 'px'; h.lab.style.top = gx(h.y - 40 + dy) + 'px'; h.lab.style.opacity = h.up > .5 ? 1 : 0; }
+          if (h.who.hit) PX.text(ctx, h.who.gang ? '★' : '!', h.x + 9, h.y - 46, 10, '#ffd36e');
+        }
+        PX.R(ctx, h.x - 6, h.y + 2, 38, 4, '#7a5a40'); PX.R(ctx, h.x - 6, h.y + 2, 38, 1, '#a8866a');
+      });
+      for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
+      ctx.drawImage(PX.person(PL(), 'stand'), 6, GY - PX.SH + 1);
+    }
+    function pointer(e, k) { if (K && !K.done && k === 'down') { const [x, y] = gameXY(e); tap(x, y); } }
+    return { start, update, draw, pointer };
+  })();
+
+  /* ───── 📢 방송실 되찾기: 뒤섞인 방송을 듣고, 들린 단어를 골라요 (듣기) ───── */
+  const RADIO = (() => {
+    let A = null;
+    function start(cs) {
+      go('mini'); CUR = 'radio'; Sound.bgm('flash');
+      A = { cs, queue: shuffle(cs.clues.map((c, i) => i)).slice(0, 5), got: 0, need: 5, miss: 0, t: 0, done: false, wave: 0 };
+      topPad('📢 0/5', `<div class="small center">🔊 다시 듣기 버튼을 눌러도 돼요</div>`);
+      tut('tutRadio', `<h2>📢 방송실을 되찾아라!</h2><div class="t">무음단이 역 안내 방송을 지지직 뒤섞어 놨어요.</div><div class="small" style="margin:1em 0;font-size:1.1em">🔊 방송에서 <b>들린 단어</b>를 골라요.<br>단어 5개를 맞히면 방송이 돌아와요!</div><div class="t">틀린 단어는 마지막에 한 번 더 나와요.</div>`).then(round);
+    }
+    function round() {
+      if (!A || A.done) return;
+      const ci = A.queue[0], c = A.cs.clues[ci];
+      const opts = shuffle([ci].concat(shuffle(A.cs.clues.map((x, i) => i).filter(i => i !== ci)).slice(0, 3)));
+      A.opts = opts; A.lock = false;
+      $('#gq').innerHTML = `📢 방송에서 들린 단어는? <button class="mini" id="rplay">🔊 다시 듣기</button>`;
+      $('#rplay').onclick = play; $('#dg').textContent = `📢 ${A.got}/${A.need}`;
+      optBtns(opts.map(i => esc(A.cs.clues[i][0])), pickOpt, 'grid4');
+      setTimeout(play, 350);
+    }
+    function play() { if (!A) return; Sound.sfx('click'); A.wave = 1.2; speak(A.cs.clues[A.queue[0]][0]); }
+    async function pickOpt(i, b) {
+      if (!A || A.lock) return; A.lock = true;
+      const ci = A.queue[0], c = A.cs.clues[ci], ok = A.opts[i] === ci;
+      if (ok) { b.classList.add('right'); A.got++; Sound.sfx('ding'); msg(`⭕ <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1300); A.queue.shift(); }
+      else { b.classList.add('wrong'); A.miss++; Sound.sfx('bad'); const rb = [...document.querySelectorAll('.mbtn button')][A.opts.indexOf(ci)]; if (rb) rb.classList.add('right'); msg(`✖ 들린 건 <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'no', 1800); speak(c[0]); A.queue.push(A.queue.shift()); }
+      await sleep(ok ? 1100 : 1900);
+      if (!A) return;
+      if (A.got >= A.need) { A.done = true; const a = A; A = null; return finishMini('radio', true, { miss: a.miss }, '🎉 방송이 돌아왔어요! 귀가 밝은 탐정!'); }
+      round();
+    }
+    function update(dt) { if (A) { A.t += dt; A.wave = Math.max(0, A.wave - dt); } }
+    function draw(t) {
+      if (!A) return;
+      PX.R(ctx, 0, 0, W, H, '#3a3048'); for (let x = 0; x < W; x += 12) PX.R(ctx, x, 0, 6, GY, '#43385a');
+      const cx = Math.round(W * .18);
+      // 스피커 + 음파
+      PX.R(ctx, cx - 16, 70, 32, 46, '#1d1424'); PX.disc(ctx, cx, 86, 10, '#4a4458'); PX.disc(ctx, cx, 86, 5, '#8a84a0'); PX.disc(ctx, cx, 106, 5, '#4a4458');
+      if (A.wave > 0) for (let k = 0; k < 3; k++) { const r = 16 + k * 9 + ((t / 60) % 9); for (let a = -0.7; a < 0.7; a += 0.12) PX.P(ctx, cx + 14 + Math.cos(a) * r, 86 + Math.sin(a) * r, '#ffd36e'); }
+      else for (let k = 0; k < 14; k++) PX.P(ctx, cx + 18 + ((k * 13 + t / 20) % 40), 76 + ((k * 7) % 22), '#6a6478');
+      // 콘솔
+      PX.R(ctx, 0, GY - 24, W, 24, '#2a2436'); for (let k = 0; k < W; k += 14) { PX.R(ctx, k + 4, GY - 18, 6, 10, '#4a4458'); PX.R(ctx, k + 5, GY - 16 + ((k * 3 + t / 90) % 6), 4, 2, '#7fd6a8'); }
+      for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
+      ctx.drawImage(PX.person(PL(), 'think'), cx - 40, GY - PX.SH + 1);
+    }
+    return { start, update, draw };
+  })();
+
+  /* ───── 🔐 금고 열기: 한자를 보고 알맞은 병음(성조)을 골라 자물쇠 3개를 풀어요 ───── */
+  const SAFE = (() => {
+    let Z = null;
+    const TONES = { a: 'āáǎà', e: 'ēéěè', i: 'īíǐì', o: 'ōóǒò', u: 'ūúǔù', ü: 'ǖǘǚǜ' };
+    const BASE = {}; Object.entries(TONES).forEach(([v, s]) => [...s].forEach((ch, k) => BASE[ch] = [v, k]));
+    function retone(py, seed) {   // 성조 하나를 바꾼 가짜 병음
+      const chars = [...py], idx = chars.map((ch, i) => BASE[ch] ? i : -1).filter(i => i >= 0);
+      if (!idx.length) return null;
+      const at = idx[seed % idx.length], [v, k] = BASE[chars[at]], nk = (k + 1 + (seed >> 1) % 3) % 4;
+      chars[at] = TONES[v][nk]; return chars.join('');
+    }
+    function start(cs) {
+      go('mini'); CUR = 'safe'; Sound.bgm('check');
+      const ids = shuffle(cs.clues.map((c, i) => i).filter(i => [...cs.clues[i][1]].some(ch => BASE[ch]))).slice(0, 3);
+      Z = { cs, ids, k: 0, miss: 0, open: 0, t: 0, done: false, dial: 0 };
+      topPad('🔐 0/3', `<div class="small center">한자를 보고, 소리 내어 읽은 다음 알맞은 병음을 골라요</div>`);
+      tut('tutSafe', `<h2>🔐 무음단 금고!</h2><div class="t">훔친 말이 금고 안에 갇혀 있어요. 자물쇠는 3개!</div><div class="small" style="margin:1em 0;font-size:1.1em">금고 화면의 <b>한자</b>를 보고<br><b>성조까지 맞는 병음</b>을 골라요.</div><div class="t">소리 내어 읽어 보면 더 잘 보여요!</div>`).then(round);
+    }
+    function round() {
+      if (!Z || Z.done) return;
+      const c = Z.cs.clues[Z.ids[Z.k]], set2 = new Set([c[1]]);
+      for (let sd = 1; set2.size < 3 && sd < 20; sd++) { const f = retone(c[1], sd * 7 + Z.k); if (f) set2.add(f); }
+      while (set2.size < 3) set2.add(pick(Z.cs.clues)[1]);
+      Z.opts = shuffle([...set2]); Z.lock = false;
+      $('#gq').innerHTML = `🔐 금고 화면: <span class="zh">${esc(c[0])}</span>${set.ko ? ` <small>${esc(c[2])}</small>` : ''}`;
+      $('#dg').textContent = `🔐 ${Z.open}/3`;
+      optBtns(Z.opts.map(o => esc(o)), pickOpt, 'row3');
+    }
+    async function pickOpt(i, b) {
+      if (!Z || Z.lock) return; Z.lock = true;
+      const c = Z.cs.clues[Z.ids[Z.k]], ok = Z.opts[i] === c[1];
+      if (ok) { b.classList.add('right'); Z.open++; Z.dial = 1; Sound.sfx('open'); speak(c[0]); msg(`🔓 딸깍! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span>`, 'ok', 1300); Z.k++; }
+      else { b.classList.add('wrong'); Z.miss++; Sound.sfx('lock'); speak(c[0]); msg(`✖ 잘 들어 봐요: <b>${esc(c[0])}</b> <span>${esc(c[1])}</span>`, 'no', 1600); }
+      await sleep(ok ? 1100 : 1700);
+      if (!Z) return;
+      if (Z.open >= 3) { Z.done = true; Z.dial = 2; Sound.sfx('door'); const sc = STORY.cases[Z.cs.no]; await sleep(900); const z = Z; Z = null; return finishMini('safe', true, { miss: z.miss }, `🎉 금고가 열렸어요! 안에서 훔친 말 "${sc ? sc.stolen : ''}" 조각 발견!`); }
+      if (!ok) Z.lock = false, document.querySelectorAll('.mbtn button').forEach(x => x.classList.remove('wrong'));
+      else round();
+    }
+    function update(dt) { if (Z) { Z.t += dt; if (Z.dial === 1) Z.dial = 0; } }
+    function draw(t) {
+      if (!Z) return;
+      PX.R(ctx, 0, 0, W, H, '#2a2238'); for (let y = 0; y < GY; y += 16) PX.R(ctx, 0, y, W, 1, '#342a44');
+      const cx = Math.round(W * .2), sy = 52;
+      PX.R(ctx, cx - 34, sy, 68, 90, '#4a4458'); PX.R(ctx, cx - 32, sy + 2, 64, 86, '#6a6478'); PX.R(ctx, cx - 32, sy + 2, 64, 3, '#8a84a0');
+      PX.R(ctx, cx - 22, sy + 10, 44, 18, '#16121e'); PX.R(ctx, cx - 21, sy + 11, 42, 16, '#1f3a2a');
+      for (let k = 0; k < 3; k++) { const lx = cx - 22 + k * 18, ly = sy + 46, open = k < Z.open; PX.disc(ctx, lx + 4, ly, 7, '#2a2436'); PX.disc(ctx, lx + 4, ly, 6, open ? '#7fd6a8' : '#c8c0d0'); const a = (open ? 1.6 : 0) + (k === Z.open ? Math.sin(t / 150) * .3 : 0); PX.line(ctx, lx + 4, ly, lx + 4 + Math.cos(a - 1.57) * 5, ly + Math.sin(a - 1.57) * 5, '#2a1d24', 2); }
+      PX.R(ctx, cx + 22, sy + 60, 6, 16, '#c8c0d0');
+      PX.text(ctx, '嘘', cx - 6, sy + 70, 12, '#2a2436');
+      for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
+      ctx.drawImage(PX.person(PL(), 'think'), cx + 44, GY - PX.SH + 1);
+    }
+    return { start, update, draw };
+  })();
+
+  const GAMES = { dodge: DODGE, flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE };
   return {
-    start(k, cs, run) { if (k === 'flash') return FLASH.start(cs, run); if (k === 'subway') return SUBWAY.start(cs, run); return dodge(cs, run); },
+    start(k, cs, run) { const G = { flash: FLASH, subway: SUBWAY, whack: WHACK, radio: RADIO, safe: SAFE }[k]; if (G) return G.start(cs, run); return dodge(cs, run); },
     update(dt) { if (CUR && GAMES[CUR]) GAMES[CUR].update(dt); },
     draw(t) { if (CUR && GAMES[CUR]) GAMES[CUR].draw(t); },
     key(e, d) { if (CUR && GAMES[CUR].key) GAMES[CUR].key(e, d); },

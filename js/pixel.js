@@ -67,6 +67,10 @@ const PX = (() => {
     student:  { hair: '#1f1a26', hairL: '#3d3350', skin: '#f8cfb0', skinD: '#dca184', coat: '#3fa7a0', coatD: '#2a7a74', coatL: '#7fd6cc', scarf: '#ffffff', scarfD: '#d0d0d8', pants: '#2f3550', pantsD: '#1f2438', shoe: '#f4f1ea', shoeD: '#3fa7a0', style: 'spiky' },
     police:   { hair: '#1f1a26', hairL: '#3d3350', skin: '#f2c09a', skinD: '#d08f6e', coat: '#2f4f8f', coatD: '#1f3566', coatL: '#5a7cc0', scarf: '#e8e8f0', scarfD: '#b8bccc', pants: '#1f2a48', pantsD: '#141c32', shoe: '#16121e', shoeD: '#2a2436', style: 'cap' },
     club:     { hair: '#1a1420', hairL: '#2e2638', skin: '#e8b892', skinD: '#c48c6c', coat: '#2e2a3a', coatD: '#1c1826', coatL: '#4a4458', scarf: '#c0392b', scarfD: '#8a2a24', pants: '#24202e', pantsD: '#16121e', shoe: '#16121e', shoeD: '#c0392b', style: 'club' },
+    det1:     { hair: '#2a2033', hairL: '#4b3d5e', skin: '#f6c7a1', skinD: '#d99a7a', coat: '#c9a66b', coatD: '#9a7a48', coatL: '#e8c98a', scarf: '#3a6ab0', scarfD: '#244a80', pants: '#3a3a48', pantsD: '#262632', shoe: '#5a3a24', shoeD: '#3a2414', style: 'spiky', dcap: '#8a6a44', dcapD: '#5a4228' },
+    det2:     { hair: '#1f1a26', hairL: '#3d3350', skin: '#f8cfb0', skinD: '#dca184', coat: '#c9a66b', coatD: '#9a7a48', coatL: '#e8c98a', scarf: '#e2504c', scarfD: '#a8332f', pants: '#3a3a48', pantsD: '#262632', shoe: '#5a3a24', shoeD: '#3a2414', style: 'pigtail', dcap: '#8a6a44', dcapD: '#5a4228' },
+    det3:     { hair: '#5c3c26', hairL: '#7c5c40', skin: '#f2c09a', skinD: '#d08f6e', coat: '#5a6a8a', coatD: '#3a4866', coatL: '#8a9ab8', scarf: '#ffd36e', scarfD: '#d6a43c', pants: '#2f2a3d', pantsD: '#1f1b29', shoe: '#f4f1ea', shoeD: '#5a6a8a', style: 'bob', glasses: 'thin' },
+    det4:     { hair: '#1f1a26', hairL: '#3d3350', skin: '#e8b892', skinD: '#c48c6c', coat: '#4f7a5a', coatD: '#345a3e', coatL: '#7fae8a', scarf: '#fff6dc', scarfD: '#d8ccb0', pants: '#2f3550', pantsD: '#1f2438', shoe: '#2f2a3d', shoeD: '#4f7a5a', style: 'long', dcap: '#3a3a48', dcapD: '#22222e' },
     teacher:  { hair: '#2b1a14', hairL: '#4e3226', skin: '#f8cfb0', skinD: '#dca184', coat: '#ff9466', coatD: '#d0663e', coatL: '#ffbc94', scarf: '#fff6dc', scarfD: '#d8ccb0', pants: '#5d4a8c', pantsD: '#40326a', shoe: '#40326a', shoeD: '#ff9466', style: 'long' }
   };
   const SW = 26, SH = 37, HIPX = 12, HIPY = 26;
@@ -97,6 +101,8 @@ const PX = (() => {
     if (L.style === 'pigtail') { R(g, cx - 2, cy - 7, 2, 1, '#ffd36e'); }
     if (L.style === 'cap') { R(g, cx - 6, cy - 9, 11, 4, '#1f3566'); R(g, cx - 5, cy - 10, 9, 1, '#2f4f8f'); R(g, cx - 6, cy - 5, 14, 2, '#141c32'); R(g, cx - 1, cy - 9, 3, 3, '#f2c14e'); P(g, cx, cy - 8, '#fff6dc'); }
     if (L.style === 'old') { R(g, cx - 4, cy - 7, 8, 1, L.skin); R(g, cx - 2, cy - 6, 6, 1, L.skin); R(g, cx + 2, cy + 3, 4, 1, L.hair); }
+    if (L.hatc) { R(g, cx - 7, cy - 6, 15, 2, L.hatc2 || '#1d1424'); [8, 10, 10].forEach((w, i) => R(g, cx - 5, cy - 11 + i, w + 2, 1, L.hatc)); R(g, cx - 5, cy - 8, 12, 1, L.hatb || '#1d1424'); }
+    if (L.dcap) { [7, 9, 11, 11].forEach((w, i) => R(g, cx - 5, cy - 10 + i, w + 1, 1, L.dcap)); R(g, cx + 2, cy - 7, 6, 2, L.dcap); R(g, cx - 5, cy - 7, 13, 1, L.dcapD || '#6a4a2a'); R(g, cx - 1, cy - 10, 2, 1, L.dcapD || '#6a4a2a'); }
     if (L.style === 'club') { R(g, cx - 7, cy - 6, 15, 2, '#16121e'); [8, 10, 10].forEach((w, i) => R(g, cx - 5, cy - 11 + i, w + 2, 1, '#2a2436')); R(g, cx - 5, cy - 8, 12, 1, '#c0392b'); }
     // 눈 (오른쪽을 봄) — mood: ok | happy | hurt | blink | surprise | sad, 'talk'가 붙으면 입을 벌림
     const m = mood || 'ok', eye = /happy/.test(m) ? 'happy' : /hurt/.test(m) ? 'hurt' : /blink/.test(m) ? 'blink' : /surprise/.test(m) ? 'surprise' : /sad/.test(m) ? 'sad' : 'ok';
@@ -106,6 +112,8 @@ const PX = (() => {
     else if (eye === 'surprise') { R(g, cx + 2, cy - 2, 3, 4, '#fff'); R(g, cx + 3, cy - 1, 2, 2, '#1d1424'); R(g, cx + 1, cy - 4, 3, 1, L.hair); }
     else if (eye === 'sad') { R(g, cx + 2, cy, 2, 2, '#fff'); R(g, cx + 3, cy, 1, 2, '#1d1424'); P(g, cx + 1, cy - 2, L.hair); P(g, cx + 2, cy - 3, L.hair); P(g, cx + 3, cy - 3, L.hair); }
     else { R(g, cx + 2, cy - 1, 2, 3, '#fff'); R(g, cx + 3, cy - 1, 1, 3, '#1d1424'); P(g, cx + 3, cy - 1, '#fff'); R(g, cx + 1, cy - 2, 3, 1, L.hair); }
+    if (L.glasses === 'sun') { R(g, cx + 1, cy - 1, 5, 3, '#16121e'); P(g, cx + 2, cy - 1, '#6a6478'); R(g, cx - 2, cy, 3, 1, '#16121e'); }
+    if (L.glasses === 'thin') { R(g, cx + 1, cy - 2, 4, 1, '#3a3036'); R(g, cx + 1, cy + 1, 4, 1, '#3a3036'); P(g, cx + 1, cy - 1, '#3a3036'); P(g, cx + 1, cy, '#3a3036'); P(g, cx + 4, cy - 1, '#3a3036'); P(g, cx + 4, cy, '#3a3036'); R(g, cx - 2, cy - 1, 3, 1, '#3a3036'); }
     if (L.style === 'club') { R(g, cx + 1, cy - 1, 5, 3, '#16121e'); P(g, cx + 2, cy - 1, '#6a6478'); R(g, cx - 2, cy, 3, 1, '#16121e'); }
     R(g, cx + 1, cy + 3, 2, 1, /happy|surprise/.test(m) ? '#ff7a90' : '#ff9aa8');   // 볼
     if (/talk/.test(m)) { R(g, cx + 3, cy + 3, 3, 2, '#7a2a34'); P(g, cx + 4, cy + 4, '#ff8a8a'); }
@@ -121,6 +129,7 @@ const PX = (() => {
   /* 포즈: t = 'run'(f 0~5) | 'jump' | 'fall' | 'slide' | 'stand' | 'hurt' | 'climb'(f 0~1) | 'cheer' */
   const RUN = [[35, -15, -30, -65], [18, -45, -12, -30], [0, -75, 12, -5], [-30, -65, 35, -15], [-12, -30, 18, -45], [12, -5, 0, -75]];
   const cache = {};
+  function addLook(key, base, over) { LOOK[key] = Object.assign({}, LOOK[base] || LOOK.minhao, over || {}); Object.keys(cache).forEach(k => { if (k.startsWith(key)) delete cache[k]; }); delete faceCache[key + 'ok']; return key; }
   function person(look, pose = 'stand', f = 0, md) {
     f = ((f | 0) % 6 + 6) % 6; const key = look + pose + f + (md || ''); if (cache[key]) return cache[key];
     const L = LOOK[look] || LOOK.minhao;
@@ -219,5 +228,5 @@ const PX = (() => {
     const [c2, g2] = mk(60, 60); g2.drawImage(c, 0, 0, 60, 60);
     return faceCache[k] = c2.toDataURL();
   }
-  return { mk, R, P, rng, disc, ellipse, line, dither, vgrad, outline, text, person, rider, faceURL, flip, LOOK, SW, SH };
+  return { addLook, mk, R, P, rng, disc, ellipse, line, dither, vgrad, outline, text, person, rider, faceURL, flip, LOOK, SW, SH };
 })();

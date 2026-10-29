@@ -266,7 +266,10 @@ const ART = (() => {
     }
     if (theme === 'cq') { R(g, 0, GY - 70, W, 3, '#5a5470'); R(g, tx - 1, GY - 74, tw + 2, 10, '#2a2438'); }
     if (theme === 'cd') for (let i = 0; i < 6; i++) { const fy = GY - 22 - i * 23; for (let k = 0; k < 5; k++) R(g, tx - 10 + k, fy - 2 - k, tw + 20 - k * 2, 1, '#5d6070'); }
-    R(g, tx + 24, 12, 20, 16, '#c0392b'); text(g, '★', tx + 29, 14, 10, '#ffe08a');
+    // 탑 꼭대기: 도시의 '말 도장(话印)'
+    R(g, tx + 33, 4, 2, 24, '#5a4a3a');
+    disc(g, tx + 34, 14, 9, '#8a5a18'); disc(g, tx + 34, 14, 8, '#f2c14e'); disc(g, tx + 34, 14, 6, '#ffd36e');
+    text(g, '话', tx + 28, 6, 11, '#8a3a18');
     g.drawImage(t.ground, 0, GY);
     return c;
   }
