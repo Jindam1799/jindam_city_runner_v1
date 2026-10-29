@@ -47,7 +47,8 @@ const ART = (() => {
 
   /* ── 도시별 배경 ── */
   const THEMES = {};
-  function layerCanvas(fn, seed) { const [c, g] = mk(LW, H); fn(g, rng(seed)); return c; }
+  let SEED = 0;
+  function layerCanvas(fn, seed) { const [c, g] = mk(LW, H); fn(g, rng(seed + SEED)); return c; }
 
   THEMES.cq = () => ({
     name: '重庆', sky: g => { PX.vgrad(g, 0, 0, 999, GY, ['#f6e7cf', '#f2d6b6', '#e6bea3', '#cfa59b']); disc(g, 210, 46, 12, '#fff2d8'); disc(g, 210, 46, 9, '#ffe9c4'); },
@@ -380,5 +381,5 @@ const ART = (() => {
     return outline(c);
   }
 
-  return { H, GY, LW, THEMES, ITEM, tall, roller, BIRD, BARS, BARS_DN, gate, towerScene, mapCanvas, cityIcon, MAP };
+  return { setSeed(n) { SEED = n; }, H, GY, LW, THEMES, ITEM, tall, roller, BIRD, BARS, BARS_DN, gate, towerScene, mapCanvas, cityIcon, MAP };
 })();

@@ -184,7 +184,8 @@ a { color: #3a7bd5; }
   #pad.pad-run .cbtn small { font-size: calc(2.4 * var(--u)); }
   #pad.pad-run > .small { display: none; }
   .gflash { top: 52%; }
-  .box { top: calc(env(safe-area-inset-top) + 9 * var(--u)); bottom: auto; left: 14%; right: 14%; }
+  .box { top: calc(env(safe-area-inset-top) + 8 * var(--u)); bottom: auto; left: calc(env(safe-area-inset-left) + 1.5%); right: auto; width: min(54%, calc(118 * var(--u))); }
+  .box.side { width: auto; right: calc(min(38%, 440px) + 1.5%); }
   .card { left: 50%; right: auto; width: min(92%, calc(130 * var(--u))); transform: translate(-50%, -50%); animation: popL .18s ease-out; }
   @keyframes popL { from { transform: translate(-50%, -50%) scale(.94); opacity: 0; } }
 }
@@ -311,3 +312,13 @@ a { color: #3a7bd5; }
 .mspot .pic { position: relative; border: calc(.6 * var(--u)) solid var(--line); border-radius: calc(1.2 * var(--u)); overflow: hidden; cursor: crosshair; }
 .mspot img { display: block; width: 100%; image-rendering: pixelated; }
 .mspot .marks i { position: absolute; width: calc(9 * var(--u)); height: calc(9 * var(--u)); border: calc(.7 * var(--u)) solid #e2504c; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 calc(.4 * var(--u)) #fff; animation: pop2 .2s; }
+
+/* ── 대화창: 작고 가볍게 (게임 화면을 덜 가리도록) ── */
+.box { padding: calc(1.6 * var(--u)) calc(2 * var(--u)); gap: calc(1.8 * var(--u)); border-width: calc(.7 * var(--u)); background: rgba(255,248,236,.96); align-items: flex-start; }
+.box .face { width: calc(10 * var(--u)); height: calc(10 * var(--u)); }
+.box .who { font-size: calc(2.8 * var(--u)); }
+.box .t { font-size: calc(3.4 * var(--u)); line-height: 1.45; }
+.box .zh { font-size: calc(4 * var(--u)); line-height: 1.3; } .box .py { font-size: calc(2.7 * var(--u)); } .box .ko { font-size: calc(2.9 * var(--u)); }
+.box .more { font-size: calc(2.4 * var(--u)); margin-top: calc(-1 * var(--u)); }
+.box .mini.sp { padding: 0 calc(1.2 * var(--u)); font-size: calc(2.8 * var(--u)); }
+@media (orientation: portrait) { .box { bottom: auto; top: calc(env(safe-area-inset-top) + 12 * var(--u)); } }

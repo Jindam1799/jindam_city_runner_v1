@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.11.0 (2026.10.29)';
+const APP_VERSION = 'v0.12.0 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -76,6 +76,7 @@ function say(lines, extra = {}) {
     SPEAK = w ? { look: w[1], mood, emo, t0: performance.now(), dur: Math.min(4200, 900 + txt.length * 110) } : null;
     const b = el(`<div class="box">${w ? `<img class="face" src="${PX.faceURL(w[1], mood)}">` : ''}<div class="body">${w ? `<div class="who">${esc(w[0])}</div>` : ''}
       ${z ? zhBlock(z[0], z[1], z[2]) + '<button class="mini sp">🔊</button>' : `<div class="t">${esc(nm(l.t))}</div>`}<div class="more">▼</div></div></div>`);
+    if (LAND && pad.innerHTML && !/pad-(run|title|mini)/.test(pad.className)) b.classList.add('side');
     uiRoot.appendChild(b);
     if (z) { speak(z[0]); b.querySelector('.sp').onclick = e => { e.stopPropagation(); speak(z[0]); }; }
     const done = () => { enterHook = null; SPEAK = null; b.remove(); Sound.sfx('blip'); res(); };
@@ -278,7 +279,8 @@ const PLAYER_X = 46, GRAV = 720, JUMP = 275, JUMP2 = 245, PH = 30, PH_SLIDE = 13
 /* 땅 높이: 평지 · 오르막 · 내리막 (꺾은선) */
 function makeTerrain(L, gatesAt) {
   const pts = [[-200, 0], [320, 0]]; let x = 320, h = 0;
-  const LV = [0, 14, 28, 42];
+  const LV = { cq: [0, 14, 28, 42], cd: [0, 14], km: [0, 14, 28], heb: [0, 14, 28], hq: [0, 14] }[THEME && THEME.key] || [0, 14, 28, 42];
+  const flatMin = 120 + Math.random() * 120, flatVar = 140 + Math.random() * 200;
   while (x < L + 400) {
     const gateSoon = gatesAt.some(g => g + FORK_L > x && g < x + 520);
     let nh = pick(LV.filter(v => v !== h && Math.abs(v - h) <= 28 && (!gateSoon || v < h || v <= 14)));
@@ -286,7 +288,7 @@ function makeTerrain(L, gatesAt) {
     const len = Math.abs(nh - h) * 3.2;
     if (gatesAt.some(g => g + FORK_L + 120 > x && g - 120 < x + len) || x + len > L - 40) { x += 50; pts.push([x, h]); continue; }
     x += len; h = nh; pts.push([x, h]);
-    x += 160 + Math.random() * 240; pts.push([x, h]);
+    x += flatMin + Math.random() * flatVar; pts.push([x, h]);
   }
   pts.push([x + 2000, h]);
   return pts;
@@ -316,18 +318,28 @@ function buildLevel(cs, boss) {
   const near = (x, d = 140) => gatesAt.some(g => x > g - d && x < g + FORK_L + 50);
   let x = 260, n = 0;
   const lows = THEME.low, highs = THEME.high;
+  // 스테이지마다 다른 느낌: 장애물 비율(맛)과 간격을 판마다 랜덤으로
+  const FLAV = { low: 3, high: 2, pit: 1, wide: .6, tunnel: .9, roll: 1, bird: .8, tall: .8, triple: .6, jumpslide: .7, birds2: .45, rollpair: .35 };
+  const wts = {}; Object.keys(FLAV).forEach(k => wts[k] = FLAV[k] * (0.3 + Math.random() * 1.6));
+  const wpick = () => { let t = 0; for (const k in wts) t += wts[k]; let r = Math.random() * t; for (const k in wts) { r -= wts[k]; if (r <= 0) return k; } return 'low'; };
+  const gapBase = 100 + Math.random() * 45, gapVar = 70 + Math.random() * 70;
+  const addLow = x => { const ob = pick(lows); objs.push({ k: 'obs', x, ob, high: false, w: ob.c.width - 4, h: ob.c.height - 2 }); };
+  const addHigh = x => { const ob = pick(highs); objs.push({ k: 'obs', x, ob, high: true, w: ob.c.width - 4, h: ob.c.height - 2 }); };
   while (x < L - 80) {
-    x += 115 + Math.random() * 110; if (near(x)) continue; n++;
-    const r = Math.random(), late = x > 420;
-    if (late && r < .10 && flatAt(x, 40)) { const w = 30 + ((Math.random() * 10) | 0); R.pits.push({ x, w }); objs.push({ k: 'pit', x, w }); continue; }
-    if (late && r < .18 && flatAt(x, 96) && !near(x + 90)) { const w = 80 + ((Math.random() * 10) | 0); R.pits.push({ x, w, wide: 1 }); objs.push({ k: 'pit', x, w, wide: 1 }); objs.push({ k: 'clue2', x: x + w / 2 - 7, hy: 78 }); x += w; continue; }
-    if (late && r < .29 && flatAt(x, 120) && !near(x + 110)) { const w = 72 + ((Math.random() * 40) | 0); objs.push({ k: 'obs', x, tunnel: 1, high: true, w, h: 46, tc: tunnelCanvas(w) }); objs.push({ k: 'clue2', x: x + w / 2 - 7, hy: 2 }); x += w; continue; }
-    if (late && r < .36) { objs.push({ k: 'obs', x, roll: 1, ob: THEME.roll, w: 16, h: 16 }); continue; }
-    if (late && r < .43) { objs.push({ k: 'obs', x, bird: 1, ph: Math.random() * 6, w: 14, h: 9 }); continue; }
-    if (late && r < .53 && flatAt(x, 20)) { const ob = THEME.tall; objs.push({ k: 'obs', x, ob, w: 18, h: 56, tall: 1 }); objs.push({ k: 'clue2', x: x + 2, hy: 84 }); continue; }
+    x += gapBase + Math.random() * gapVar; if (near(x)) continue; n++;
+    const late = x > 420; let kind = late ? wpick() : 'low';
+    if (kind === 'pit' && flatAt(x, 40)) { const w = 30 + ((Math.random() * 10) | 0); R.pits.push({ x, w }); objs.push({ k: 'pit', x, w }); continue; }
+    if (kind === 'wide' && flatAt(x, 96) && !near(x + 90)) { const w = 80 + ((Math.random() * 10) | 0); R.pits.push({ x, w, wide: 1 }); objs.push({ k: 'pit', x, w, wide: 1 }); objs.push({ k: 'clue2', x: x + w / 2 - 7, hy: 78 }); x += w; continue; }
+    if (kind === 'tunnel' && flatAt(x, 120) && !near(x + 110)) { const w = 72 + ((Math.random() * 40) | 0); objs.push({ k: 'obs', x, tunnel: 1, high: true, w, h: 46, tc: tunnelCanvas(w) }); objs.push({ k: 'clue2', x: x + w / 2 - 7, hy: 2 }); x += w; continue; }
+    if (kind === 'roll') { objs.push({ k: 'obs', x, roll: 1, ob: THEME.roll, w: 16, h: 16 }); continue; }
+    if (kind === 'rollpair') { objs.push({ k: 'obs', x, roll: 1, ob: THEME.roll, w: 16, h: 16 }); objs.push({ k: 'obs', x: x + 70, roll: 1, ob: THEME.roll, w: 16, h: 16 }); x += 70; continue; }
+    if (kind === 'bird') { objs.push({ k: 'obs', x, bird: 1, ph: Math.random() * 6, w: 14, h: 9 }); continue; }
+    if (kind === 'birds2') { objs.push({ k: 'obs', x, bird: 1, ph: 0, w: 14, h: 9 }); objs.push({ k: 'obs', x: x + 55, bird: 1, ph: 3, w: 14, h: 9 }); x += 55; continue; }
+    if (kind === 'tall' && flatAt(x, 20)) { const ob = THEME.tall; objs.push({ k: 'obs', x, ob, w: 18, h: 56, tall: 1 }); objs.push({ k: 'clue2', x: x + 2, hy: 84 }); continue; }
+    if (kind === 'triple' && flatAt(x, 150) && !near(x + 150)) { addLow(x); addLow(x + 52); addLow(x + 104); x += 104; continue; }
+    if (kind === 'jumpslide' && flatAt(x, 110) && !near(x + 100)) { if (Math.random() < .5) { addLow(x); addHigh(x + 78); } else { addHigh(x); addLow(x + 82); } x += 82; continue; }
     if (!flatAt(x, 26)) { x -= 60; continue; }
-    const hi = late && r < .72; const ob = pick(hi ? highs : lows);
-    objs.push({ k: 'obs', x, ob, high: ob.high, w: ob.c.width - 4, h: ob.c.height - 2 });
+    if (kind === 'high') addHigh(x); else addLow(x);
   }
   // 꼭 쓰게 만들기: 터널 2개 · 넓은 구멍 1개는 반드시 넣기
   const freeAt = (x, w) => flatAt(x - 20, w + 40) && !near(x) && !near(x + w);
@@ -376,6 +388,7 @@ function startRun(cs, boss = false) {
   go('run');
   const key = boss ? 'hq' : cs.theme; Sound.bgm(key);
   skyC = null; drawScene(key, 0); THEME.key = key; THEME.roll = ART.roller(key); THEME.tall = ART.tall(THEME.col);
+  { const base = (Math.random() * 9999) | 0; THEME.vars = [0, 1, 2].map(k => { ART.setSeed(base + k * 131); const t = ART.THEMES[key](); return t.layers; }); ART.setSeed(0); THEME.vars[0] = THEME.layers; }
   { const d = THEME.ground.getContext('2d').getImageData(4, THEME.ground.height - 2, 1, 1).data; THEME.soil = `rgb(${d[0] * .72 | 0},${d[1] * .68 | 0},${d[2] * .7 | 0})`; THEME.soilD = `rgb(${d[0] * .55 | 0},${d[1] * .5 | 0},${d[2] * .55 | 0})`; }
   R = { cs, boss, dist: 0, speed: 82, objs: [], y: 0, vy: 0, ground: true, jumps: 0, slide: 0, hearts: 3, inv: 0, bike: 0, got: [], gates: [], fx: [], paused: false, t: 0, done: false, gateNow: null, slowK: 1, hurtT: 0, snow: [], terr: [[0, 0], [1, 0]], pits: [] };
   R.objs = buildLevel(cs, boss);
@@ -680,7 +693,7 @@ function drawGround() {
 function drawRun(t) {
   if (!skyC) { const [c, g] = PX.mk(W, H); THEME.sky(g); skyC = c; }
   ctx.drawImage(skyC, 0, 0);
-  THEME.layers.forEach((L, i) => { const off = Math.floor(R.dist * L.s) % ART.LW; for (let x = -off; x < W; x += ART.LW) ctx.drawImage(L.c, x, 0); });
+  THEME.layers.forEach((L, i) => { const sc = R.dist * L.s, off = Math.floor(sc) % ART.LW, base = Math.floor(sc / ART.LW); let k = 0; for (let x = -off; x < W; x += ART.LW, k++) { const v = THEME.vars ? THEME.vars[(((base + k) * 7 + i) % 3 + 3) % 3][i] : L; ctx.drawImage((v || L).c, x, 0); } });
   if (THEME.name === '重庆') { const tx = ((t / 1000 * 60 - R.dist * .2) % 900 + 900) % 900 - 200; PX.R(ctx, tx, 104, 58, 9, '#2a1d24'); PX.R(ctx, tx + 1, 105, 56, 7, '#e2504c'); for (let i = 0; i < 6; i++) PX.R(ctx, tx + 4 + i * 9, 106, 6, 3, '#fff6dc'); PX.R(ctx, tx + 1, 111, 56, 1, '#a8332f'); }
   drawGround();
   for (const o of R.objs) {
