@@ -45,14 +45,23 @@ const PX = (() => {
     d.data.set(out); g.putImageData(d, 0, 0); return c;
   }
   /* 작은 글자 (선명하게) */
+  const TXC = new Map();
   function text(g, s, x, y, size, col, font = "'Noto Sans SC', 'PingFang SC', sans-serif", weight = 700) {
-    const [c, t] = mk(Math.ceil(size * s.length * 1.2) + 4, size + 6);
-    t.font = `${weight} ${size}px ${font}`; t.fillStyle = '#fff'; t.textBaseline = 'top'; t.fillText(s, 1, 1);
-    const d = t.getImageData(0, 0, c.width, c.height), a = d.data;
-    const [r, gg, b] = [parseInt(col.slice(1, 3), 16), parseInt(col.slice(3, 5), 16), parseInt(col.slice(5, 7), 16)];
-    for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 110; a[i] = r; a[i + 1] = gg; a[i + 2] = b; a[i + 3] = on ? 255 : 0; }
-    t.putImageData(d, 0, 0); g.drawImage(c, Math.round(x), Math.round(y)); return c.width;
+    const key = s + '|' + size + '|' + col + '|' + font + '|' + weight;
+    let c = TXC.get(key);
+    if (!c) {
+      let t; [c, t] = mk(Math.ceil(size * s.length * 1.2) + 4, size + 6);
+      t.font = `${weight} ${size}px ${font}`; t.fillStyle = '#fff'; t.textBaseline = 'top'; t.fillText(s, 1, 1);
+      const d = t.getImageData(0, 0, c.width, c.height), a = d.data;
+      const [r, gg, b] = [parseInt(col.slice(1, 3), 16), parseInt(col.slice(3, 5), 16), parseInt(col.slice(5, 7), 16)];
+      for (let i = 0; i < a.length; i += 4) { const on = a[i + 3] > 110; a[i] = r; a[i + 1] = gg; a[i + 2] = b; a[i + 3] = on ? 255 : 0; }
+      t.putImageData(d, 0, 0);
+      if (TXC.size > 400) TXC.clear();
+      TXC.set(key, c);
+    }
+    g.drawImage(c, Math.round(x), Math.round(y)); return c.width;
   }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => TXC.clear());
 
   /* ───── 사람 ───── */
   const LOOK = {

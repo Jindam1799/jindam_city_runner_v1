@@ -14,8 +14,9 @@ const Sound = (() => {
     d.delayTime.value = 0.27; fb.gain.value = 0.28; wet.gain.value = 0.35;
     echoIn.connect(d); d.connect(fb); fb.connect(d); d.connect(wet); wet.connect(bgmGain);
     // 16비트 느낌의 잔향 (홀 리버브)
-    const rv = ac.createConvolver(), len = ac.sampleRate * 2.2, ir = ac.createBuffer(2, len, ac.sampleRate);
-    for (let c = 0; c < 2; c++) { const ch = ir.getChannelData(c); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    const MOB = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    const rv = ac.createConvolver(), len = ac.sampleRate * (MOB ? 1.0 : 1.8), ir = ac.createBuffer(MOB ? 1 : 2, len, ac.sampleRate);
+    for (let c = 0; c < ir.numberOfChannels; c++) { const ch = ir.getChannelData(c); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
     rv.buffer = ir; revIn = ac.createGain(); revIn.gain.value = 0.42; const rvOut = ac.createGain(); rvOut.gain.value = 0.9;
     revIn.connect(rv); rv.connect(rvOut); rvOut.connect(bgmGain);
     // 25% 펄스파 (8비트 소리)
@@ -187,8 +188,8 @@ const Sound = (() => {
   }
   function pad(root, at, dur, g, mode) {   // 화음 패드 (스트링)
     const v = ac.createGain(), fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 1100; fl.Q.value = .7;
-    [0, mode === 'min' ? 15 : 16, 19, 24].forEach((iv, k) => { [-9, 9].forEach(det => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = N(root + 12 + iv); o.detune.value = det + k; o.connect(fl); o.start(at); o.stop(at + dur + 0.6); }); });
-    v.gain.setValueAtTime(0.0001, at); v.gain.linearRampToValueAtTime(0.028, at + Math.min(0.4, dur * .4)); v.gain.setValueAtTime(0.028, at + dur * .85); v.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.5);
+    [0, mode === 'min' ? 15 : 16, 19].forEach((iv, k) => { [k ? 8 : -8].forEach(det => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = N(root + 12 + iv); o.detune.value = det + k; o.connect(fl); o.start(at); o.stop(at + dur + 0.6); }); });
+    v.gain.setValueAtTime(0.0001, at); v.gain.linearRampToValueAtTime(0.04, at + Math.min(0.4, dur * .4)); v.gain.setValueAtTime(0.04, at + dur * .85); v.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.5);
     fl.connect(v); v.connect(g); v.connect(revIn);
   }
   function bass16(f, at, dur, g) {

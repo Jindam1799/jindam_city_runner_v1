@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.12.0 (2026.10.29)';
+const APP_VERSION = 'v0.12.1 (2026.10.29)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -465,7 +465,7 @@ function updateRun(dt) {
     R.vy -= GRAV * dt; R.y += R.vy * dt;
     if (!pit && R.y <= G && R.vy <= 0) { if (R.vy < -120) Sound.sfx('land'); R.y = G; R.vy = 0; R.ground = true; R.jumps = 0; puff(PLAYER_X + 8, GY - G, '#d8c8b8'); }
     if (pit && R.y < gh(pit.x) - 20) {          // 구멍에 빠짐 → 하트 -1, 판자를 깔고 튀어 오름
-      pit.filled = true; R.vy = 300; R.jumps = 2; Sound.sfx('pit'); toast('앗! 구멍은 점프로 넘어요');
+      pit.filled = true; if (R.groundG) paintGround(pit.x - 4, pit.x + pit.w + 4); R.vy = 300; R.jumps = 2; Sound.sfx('pit'); toast('앗! 구멍은 점프로 넘어요');
       if (hurt()) return;
     }
   }
@@ -633,24 +633,30 @@ async function failRun() {
   c.querySelector('.mp').onclick = () => { c.close(); mapScreen(); };
   await wait(c); startRun(R.cs, R.boss);
 }
+function drawDeck(g, sx, dy, gy, col, ft, fall) {
+  for (let x = DECK0 + 14; x < DECK1; x += 56) { PX.R(g, sx + x, dy + 4, 5, PLAT_H - 4, '#5a4a5c'); PX.R(g, sx + x, dy + 4, 1, PLAT_H - 4, '#7a6a7c'); }
+  // 다리 바닥 (추락 때는 끝부분이 부서짐)
+  for (let x = DECK0; x <= DECK1; x += 2) {
+    let yy = dy; if (fall && x > FORK_REV - 16) { if (x > FORK_REV + 30) {} else yy = dy + ft * ft * 260 * (0.6 + ((x * 7) % 5) / 10); }
+    PX.R(g, sx + x, yy, 2, 4, (x / 2) % 4 ? '#a8744e' : '#8a5a30'); PX.R(g, sx + x, yy, 2, 1, '#d8a468');
+    if (x % 10 === 0) { PX.R(g, sx + x, yy - 9, 1, 9, '#6a4028'); }
+  }
+  for (let x = DECK0; x <= DECK1; x += 10) PX.R(g, sx + x, dy - 9, 10, 1, '#8a5a30');
+  // 내려오는 계단
+  for (let k = 0; k < 6; k++) { const x = DECK1 + k * 7, y = dy + k * (PLAT_H / 6); PX.R(g, sx + x, y, 8, gy - y, '#8a5a30'); PX.R(g, sx + x, y, 8, 2, '#c99252'); }
+  // 오르는 경사 (점프 발판)
+  PX.R(g, sx + DECK0 - 4, dy, 4, 3, col);
+}
 function drawFork(o, sx, t) {
   const base = Math.round(gh(o.x)), gy = GY - base, dy = gy - PLAT_H, col = THEME.col;
   const fall = R.cut && R.cut.o === o && R.cut.type === 'fall', ft = fall ? R.cut.t : 0;
   // 갈림길 표지판
   PX.R(ctx, sx - 2, gy - 34, 2, 34, '#3b2a35'); PX.R(ctx, sx - 8, gy - 34, 14, 8, '#2a1d24'); PX.R(ctx, sx - 7, gy - 33, 12, 6, '#ffd36e'); PX.text(ctx, '↗', sx - 6, gy - 35, 7, '#2a1d24');
-  // 다리 기둥
-  for (let x = DECK0 + 14; x < DECK1; x += 56) { PX.R(ctx, sx + x, dy + 4, 5, PLAT_H - 4, '#5a4a5c'); PX.R(ctx, sx + x, dy + 4, 1, PLAT_H - 4, '#7a6a7c'); }
-  // 다리 바닥 (추락 때는 끝부분이 부서짐)
-  for (let x = DECK0; x <= DECK1; x += 2) {
-    let yy = dy; if (fall && x > FORK_REV - 16) { if (x > FORK_REV + 30) {} else yy = dy + ft * ft * 260 * (0.6 + ((x * 7) % 5) / 10); }
-    PX.R(ctx, sx + x, yy, 2, 4, (x / 2) % 4 ? '#a8744e' : '#8a5a30'); PX.R(ctx, sx + x, yy, 2, 1, '#d8a468');
-    if (x % 10 === 0) { PX.R(ctx, sx + x, yy - 9, 1, 9, '#6a4028'); }
-  }
-  for (let x = DECK0; x <= DECK1; x += 10) PX.R(ctx, sx + x, dy - 9, 10, 1, '#8a5a30');
-  // 내려오는 계단
-  for (let k = 0; k < 6; k++) { const x = DECK1 + k * 7, y = dy + k * (PLAT_H / 6); PX.R(ctx, sx + x, y, 8, gy - y, '#8a5a30'); PX.R(ctx, sx + x, y, 8, 2, '#c99252'); }
-  // 오르는 경사 (점프 발판)
-  PX.R(ctx, sx + DECK0 - 4, dy, 4, 3, col);
+  // 다리 (평소엔 미리 그려 둔 그림을 복사, 무너질 때만 하나씩 그림)
+  if (!fall) {
+    if (!o.deckC) { const [c, g] = PX.mk(FORK_L + 8, PLAT_H + 12); const sv = ctx; drawDeck(g, 0, 10, PLAT_H + 10, col, 0, false); o.deckC = c; }
+    ctx.drawImage(o.deckC, sx, dy - 10);
+  } else drawDeck(ctx, sx, dy, gy, col, ft, true);
   // ❓ 커튼 (정답 공개 지점) — 위 길·아래 길 모두
   const open = o.passed, rx = sx + FORK_REV;
   [[dy - 40, 38], [gy - 44, 42]].forEach(([y, h], i) => {
@@ -677,18 +683,32 @@ function drawCut(t) {
   }
   if (c.t > 1.25) { ctx.fillStyle = `rgba(20,12,24,${Math.min(.8, (c.t - 1.25) * 1.8)})`; ctx.fillRect(0, 0, W, H); }
 }
-function drawGround() {
+/* 땅은 판이 시작할 때 한 번만 길게 그려 두고, 매 프레임에는 보이는 부분만 복사해요 (모바일 성능) */
+const G_TOP = GY - 52, G_X0 = -120, G_CH = 1024;
+function paintGround(x0, x1) {
   const gc = THEME.ground, gH = gc.height;
-  for (let x = 0; x < W; x++) {
-    const wx = R.dist + x, h = Math.round(gh(wx)), p = R.pits.find(q => wx >= q.x && wx < q.x + q.w);
-    if (p && !p.filled) { const e = wx - p.x < 2 || p.x + p.w - wx <= 2; ctx.fillStyle = e ? THEME.soilD : '#140c18'; ctx.fillRect(x, GY - h + (e ? 0 : 3), 1, H); if (!e) { ctx.fillStyle = '#2a1d2e'; ctx.fillRect(x, GY - h, 1, 3); } continue; }
-    const sx = ((Math.floor(wx) % ART.LW) + ART.LW) % ART.LW;
-    ctx.drawImage(gc, sx, 0, 1, gH, x, GY - h, 1, gH);
-    if (h > 0) { ctx.fillStyle = THEME.soil; ctx.fillRect(x, GY - h + gH, 1, h); if ((Math.floor(wx) + h) % 7 === 0) { ctx.fillStyle = THEME.soilD; ctx.fillRect(x, GY - h + gH + 3, 1, 2); } }
-    if (p && p.filled) { ctx.fillStyle = (Math.floor(wx) % 6 === 0) ? '#6a4028' : '#a8743e'; ctx.fillRect(x, GY - h, 1, 3); }
-    // 비탈 가장자리 그림자
-    const d = gh(wx + 1) - gh(wx - 1); if (Math.abs(d) > .1) { ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(x, GY - h + 2, 1, gH - 2); }
+  x0 = Math.max(G_X0, Math.floor(x0)); x1 = Math.min(R.gEnd, Math.ceil(x1));
+  for (let wx = x0; wx < x1; wx++) {
+    const lx = wx - G_X0, ci = (lx / G_CH) | 0, g = R.gChunks[ci][1], x = lx - ci * G_CH;
+    g.clearRect(x, 0, 1, H - G_TOP);
+    const h = Math.round(gh(wx)), p = R.pits.find(q => wx >= q.x && wx < q.x + q.w), y = GY - h - G_TOP;
+    if (p && !p.filled) { const e = wx - p.x < 2 || p.x + p.w - wx <= 2; g.fillStyle = e ? THEME.soilD : '#140c18'; g.fillRect(x, y + (e ? 0 : 3), 1, H); if (!e) { g.fillStyle = '#2a1d2e'; g.fillRect(x, y, 1, 3); } continue; }
+    const sx = ((wx % ART.LW) + ART.LW) % ART.LW;
+    g.drawImage(gc, sx, 0, 1, gH, x, y, 1, gH);
+    if (h > 0) { g.fillStyle = THEME.soil; g.fillRect(x, y + gH, 1, h); if ((wx + h) % 7 === 0) { g.fillStyle = THEME.soilD; g.fillRect(x, y + gH + 3, 1, 2); } }
+    if (p && p.filled) { g.fillStyle = (wx % 6 === 0) ? '#6a4028' : '#a8743e'; g.fillRect(x, y, 1, 3); }
+    const d = gh(wx + 1) - gh(wx - 1); if (Math.abs(d) > .1) { g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(x, y + 2, 1, gH - 2); }
   }
+}
+function buildGround() {
+  R.gEnd = Math.ceil(R.total + 700); const n = Math.ceil((R.gEnd - G_X0) / G_CH);
+  R.gChunks = Array.from({ length: n }, () => PX.mk(G_CH, H - G_TOP));
+  paintGround(G_X0, R.gEnd); R.groundG = true;
+}
+function drawGround() {
+  if (!R.gChunks) buildGround();
+  const lx = Math.round(R.dist) - G_X0, ci = Math.max(0, (lx / G_CH) | 0), off = lx - ci * G_CH;
+  for (let k = 0, dx = -off; dx < W && ci + k < R.gChunks.length; k++, dx += G_CH) ctx.drawImage(R.gChunks[ci + k][0], dx, G_TOP);
 }
 function drawRun(t) {
   if (!skyC) { const [c, g] = PX.mk(W, H); THEME.sky(g); skyC = c; }
@@ -1035,7 +1055,7 @@ function openMenu() {
 let last = performance.now();
 function loop(now) {
   try {
-  { const a = document.getElementById('app'); if (a.clientWidth + 'x' + a.clientHeight + '@' + (window.devicePixelRatio || 1) !== fitKey) { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; } }
+  if (now - (loop._fk || 0) > 600) { loop._fk = now; const a = document.getElementById('app'); if (a.clientWidth + 'x' + a.clientHeight + '@' + (window.devicePixelRatio || 1) !== fitKey) { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; } }
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (screen === 'title') { titleT += dt; if (!THEME || THEME.name !== '重庆') { THEME = ART.THEMES.cq(); skyC = null; } drawTitle(now, titleT * 60); }
   else if (screen === 'map') drawMap(now);
