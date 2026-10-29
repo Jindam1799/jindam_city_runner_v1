@@ -322,3 +322,24 @@ a { color: #3a7bd5; }
 .box .more { font-size: calc(2.4 * var(--u)); margin-top: calc(-1 * var(--u)); }
 .box .mini.sp { padding: 0 calc(1.2 * var(--u)); font-size: calc(2.8 * var(--u)); }
 @media (orientation: portrait) { .box { bottom: auto; top: calc(env(safe-area-inset-top) + 12 * var(--u)); } }
+
+/* ── 🛂 검문소 2.0 ── */
+.ck2 .ptitle .clock { font-family: var(--ko); font-size: calc(3 * var(--u)); background: #2a1d2e; color: #ffd36e; border-radius: calc(1 * var(--u)); padding: 0 calc(1.2 * var(--u)); }
+.ck2 details.rulebook > summary { cursor: pointer; list-style: none; } .ck2 details.rulebook > summary::after { content: ' ▾'; color: #8a5a30; }
+.ck2 details.rulebook:not([open]) { padding-bottom: calc(1 * var(--u)); }
+.ck2 .rule small.py { display: none; }
+.docs2 { display: grid; grid-template-columns: 1.3fr 1fr; gap: calc(1.2 * var(--u)); }
+.docs2 .pass { padding: calc(.8 * var(--u)) calc(1.4 * var(--u)); }
+.docs2 .drow { font-size: calc(2.6 * var(--u)); } .docs2 .drow b { font-size: calc(3.4 * var(--u)); }
+.docs2 .tk { background: #fff4e0; border-color: #b0602a; } .docs2 .tk .ph { color: #b0602a; border-color: #b0602a; }
+.docs2 .today { font-size: calc(2.4 * var(--u)); color: #b0602a; margin-top: calc(.6 * var(--u)); }
+.ck2 .clues3 .cl { flex: 1 1 40%; }
+.qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1 * var(--u)); }
+.qb { text-align: left; background: #eef4ff; border: calc(.5 * var(--u)) solid #3a4677; border-radius: calc(1.4 * var(--u)); padding: calc(.8 * var(--u)) calc(1.2 * var(--u)); font-size: calc(2.8 * var(--u)); box-shadow: 0 calc(.5 * var(--u)) 0 #3a4677; }
+.qb .zh { font-size: calc(3.6 * var(--u)); } .qb small { display: block; color: #6a7090; font-size: calc(2.4 * var(--u)); }
+.qb.sp { background: #fff2c4; border-color: #b0802a; box-shadow: 0 calc(.5 * var(--u)) 0 #b0802a; }
+.qb.used { opacity: .6; } .qb:active { transform: translateY(calc(.4 * var(--u))); box-shadow: none; }
+.talk.flash { animation: pop2 .2s ease-out; background: #fffbe8; }
+.talk { min-height: calc(9 * var(--u)); }
+.ck2 .pass { display: block !important; }
+@media (orientation: landscape) { .ck2 .docs2 { grid-template-columns: 1fr 1fr; } .ck2 .qbtns .qb small { display: none; } }
