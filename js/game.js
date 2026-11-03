@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.14.1 (2026.10.29)';
+const APP_VERSION = 'v0.15.0 (2026.11.04)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -96,7 +96,13 @@ const wait = (c, sel = '.go') => new Promise(res => { const b = c.querySelector(
 
 /* ───────── 화면 전환 ───────── */
 let screen = 'title', cur = null;
-function go(s) { screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = s === 'mini' ? 'pad-run pad-mini' : 'pad-' + s; setTop(); }
+function go(s) { if (s !== screen) fadeIn(); screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = s === 'mini' ? 'pad-run pad-mini' : 'pad-' + s; setTop(); }
+/* 화면 바뀔 때 살짝 어둡게 → 밝게 (장면 전환) */
+let fadeEl = null;
+function fadeIn() {
+  if (!fadeEl) { fadeEl = document.createElement('div'); fadeEl.id = 'fade'; document.getElementById('app').appendChild(fadeEl); }
+  fadeEl.classList.remove('on'); void fadeEl.offsetWidth; fadeEl.classList.add('on');
+}
 function setTop() {
   if (screen === 'title') { topEl.innerHTML = ''; return; }
   const stamps = CASES.filter(c => save.cleared[c.no]).length;
@@ -433,7 +439,7 @@ function startRun(cs, boss = false) {
 function runPad() {
   pad.innerHTML = `<div class="rtop"><div class="hudrun"><span id="hearts"></span><span id="clues"></span><span id="bikeT"></span></div>
     <div class="prog"><i id="progI"></i></div><div id="gq"></div><div id="msg"></div></div>
-    <div class="ctrl"><button class="cbtn jump" id="bJ">⤒<small>점프 (두 번 = 높이)</small></button><button class="cbtn slide" id="bS">⤓<small>미끄러지기</small></button></div>
+    <div class="ctrl"><button class="cbtn jump" id="bJ">⤒<small>점프 ×2</small></button><button class="cbtn slide" id="bS">⤓<small>미끄러지기</small></button></div>
     <div class="small center">화면을 눌러도 점프 · 아래로 쓸면 미끄러지기 · 키보드 ↑/스페이스 ↓</div>`;
   const bJ = $('#bJ'), bS = $('#bS');
   bJ.addEventListener('pointerdown', e => { e.preventDefault(); Sound.init(); doJump(); });
@@ -476,12 +482,13 @@ function pauseRun() {
 }
 function hurt() {
   if (R.inv > 0) return false;
-  R.hearts--; R.inv = 1.3; R.hurtT = .5; shake(5, .3); Sound.sfx('hurt'); puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
+  R.hearts--; R.inv = 1.3; R.hurtT = .5; R.stop = .09; shake(5, .3); Sound.sfx('hurt'); puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
   if (R.hearts <= 0) { failRun(); return true; } return false;
 }
 function updateRun(dt) {
   if (!R || R.paused || R.done || uiRoot.querySelector('.card,.box')) return;
   R.t += dt;
+  if (R.stop > 0) { R.stop -= dt; return; }       // 부딪힌 순간 잠깐 멈칫 (손맛)
   const fx0 = footX(), slope = R.onPlat ? 0 : (gh(fx0 + 6) - gh(fx0 - 6)) / 12;
   const sp = (R.speed + Math.min(28, R.t * .9)) * (R.bike > 0 ? 1.7 : 1) * (R.ground ? Math.max(.75, Math.min(1.25, 1 - slope * .9)) : 1);
   R.dist += sp * dt;
@@ -505,6 +512,8 @@ function updateRun(dt) {
     }
   }
   if (R.squash > 0) R.squash -= dt;
+  if (R.ground && R.slide <= 0 && R.bike <= 0) { R.dustT = (R.dustT || 0) - dt; if (R.dustT <= 0) { R.dustT = .16; R.fx.push({ x: PLAYER_X + 4, y: GY - R.y - 1, vx: -30 - Math.random() * 20, vy: -10 - Math.random() * 12, life: .3, col: '#e8dccc' }); } }
+  if (R.slide > 0 && R.ground) { R.fx.push({ x: PLAYER_X + 2, y: GY - R.y - 1, vx: -50, vy: -20 * Math.random(), life: .2, col: '#ffe9b8' }); }
   if (R.slideHold && R.ground) R.slide = Math.max(R.slide, .12);
   if (R.slide > 0) R.slide -= dt;
   if (R.inv > 0) R.inv -= dt; if (R.hurtT > 0) R.hurtT -= dt;
@@ -604,7 +613,7 @@ function drawRun(t) {
   drawGround();
   for (const o of R.objs) {
     const sx = Math.round(o.x - R.dist); if (sx > W + 60) break; if (sx + (o.w || 0) < -60 || o.gone) continue;
-    if (o.k === 'plat') { ctx.drawImage(o.c, sx, Math.round(GY - o.base - o.h)); continue; }
+    if (o.k === 'plat') { const gyb = Math.round(GY - gh(o.x + o.w / 2)); ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.fillRect(sx + 2, gyb - 1, o.w - 2, 2); ctx.drawImage(o.c, sx, Math.round(GY - o.base - o.h)); continue; }
     if (o.k === 'obs') {
       const base = Math.round(gh(o.x + o.w / 2) + (o.on || 0));
       if (o.roll) ctx.drawImage(o.ob.fr[((Math.floor(o.x / 4) % 4) + 4) % 4], sx, GY - base - 17);
