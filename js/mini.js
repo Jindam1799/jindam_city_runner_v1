@@ -15,7 +15,7 @@ const MINI = (() => {
   let D = null, CUR = null, CD = 0;
   const stars = miss => miss === 0 ? 3 : miss <= 2 ? 2 : 1;
   const rank = miss => '★'.repeat(stars(miss)) + '☆'.repeat(3 - stars(miss));
-  function burst(x, y, col) { const d = el(`<div class="burst" style="left:${gx(x)}px;top:${gx(y)}px;--c:${col}"></div>`); ov.appendChild(d); setTimeout(() => d.remove(), 500); }
+  function burst(x, y, col, k = 'star') { if (FXS.play(k, x, y + 40)) return; const d = el(`<div class="burst" style="left:${gx(x)}px;top:${gx(y)}px;--c:${col}"></div>`); ov.appendChild(d); setTimeout(() => d.remove(), 500); }
   /* 3·2·1 시작! (이 동안은 게임이 멈춰요) */
   async function countdown() {
     CD = performance.now() + 2600;
@@ -400,7 +400,7 @@ const MINI = (() => {
       const w = h.who; w.hit = K.t;
       if (!w.gang) { K.miss++; Sound.sfx('bad'); shake(2, .15); msg('🙂 앗, 시민이에요! 단원만 잡아요', 'no', 1300); return; }
       const c = K.cs.clues[w.ci];
-      if (w.ci === K.tgt[K.ti]) { K.got++; Sound.sfx('smash'); shake(3, .15); burst(h.x + 13, h.y - 14, '#ffd36e'); speak(c[0]); msg(`🚔 잡았다! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1400); if (K.got >= 3) return end(true); K.ti++; prompt(); }
+      if (w.ci === K.tgt[K.ti]) { K.got++; Sound.sfx('smash'); shake(3, .15); if (!FXS.play('pow', h.x + 13, h.y - 14)) burst(h.x + 13, h.y - 14, '#ffd36e'); speak(c[0]); msg(`🚔 잡았다! <b>${esc(c[0])}</b> <span>${esc(c[1])}</span> · ${esc(c[2])}`, 'ok', 1400); if (K.got >= 3) return end(true); K.ti++; prompt(); }
       else { K.miss++; Sound.sfx('lock'); shake(2, .15); speak(c[0]); msg(`✖ <b>${esc(c[0])}</b>은(는) '${esc(c[2])}'`, 'no', 1500); }
     }
     function end(ok) { K.done = true; ov.querySelectorAll('.wlab').forEach(x => x.remove()); const k = K; K = null; finishMini('whack', ok, { got: k.got, miss: k.miss }, ok ? '🎉 단원 3명 체포!' : '⏰ 시간 끝! 단원들이 숨어 버렸어요'); }

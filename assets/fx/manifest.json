@@ -1,0 +1,125 @@
+{
+ "generator": "tools/pixelfx/export.mjs",
+ "pixelfx": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+ "effects": {
+  "clue": {
+   "id": "pickups/collect-burst",
+   "png": "clue.png",
+   "json": "clue.json",
+   "frames": 21,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    112,
+    108
+   ],
+   "pivot": [
+    56,
+    94
+   ],
+   "use": "단서 돋보기 먹기"
+  },
+  "hit": {
+   "id": "impacts/blunt-hit",
+   "png": "hit.png",
+   "json": "hit.json",
+   "frames": 15,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    128,
+    88
+   ],
+   "pivot": [
+    64,
+    72
+   ],
+   "use": "장애물에 부딪힘"
+  },
+  "poof": {
+   "id": "spawn/poof",
+   "png": "poof.png",
+   "json": "poof.json",
+   "frames": 25,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    112,
+    92
+   ],
+   "pivot": [
+    56,
+    80
+   ],
+   "use": "자전거로 장애물 부수기·오답 상자"
+  },
+  "pow": {
+   "id": "explosions/cartoon-pow",
+   "png": "pow.png",
+   "json": "pow.json",
+   "frames": 17,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    184,
+    144
+   ],
+   "pivot": [
+    92,
+    72
+   ],
+   "use": "두더지(무음단) 잡기"
+  },
+  "spark": {
+   "id": "impacts/hit-spark",
+   "png": "spark.png",
+   "json": "spark.json",
+   "frames": 9,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    136,
+    80
+   ],
+   "pivot": [
+    44,
+    64
+   ],
+   "use": "미니게임 정답 짧은 불꽃"
+  },
+  "star": {
+   "id": "pickups/collect-burst",
+   "png": "star.png",
+   "json": "star.json",
+   "frames": 21,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    112,
+    108
+   ],
+   "pivot": [
+    56,
+    94
+   ],
+   "use": "미니게임 정답"
+  },
+  "confetti": {
+   "id": "ui/confetti",
+   "png": "confetti.png",
+   "json": "confetti.json",
+   "frames": 52,
+   "fps": 15,
+   "loop": false,
+   "frameSize": [
+    200,
+    140
+   ],
+   "pivot": [
+    100,
+    126
+   ],
+   "use": "사건 해결·결승선"
+  }
+ }
+}

@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.15.0 (2026.11.04)';
+const APP_VERSION = 'v0.16.0 (2026.11.04)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -12,7 +12,10 @@ const store = {
   clear() { try { Object.keys(localStorage).filter(k => k.startsWith(KEY)).forEach(k => localStorage.removeItem(k)); } catch (e) {} }
 };
 let save = Object.assign(newSave(), store.get('save', {}) || {});
-const set = Object.assign({ py: true, ko: true, rate: .85, sfx: true, bgm: true }, store.get('set', {}));
+const set = Object.assign({ py: true, ko: true, rate: .85, sfx: true, bgm: true, wx: true }, store.get('set', {}));
+let FDT = .016;   // 이번 프레임 시간 (날씨·이펙트용)
+const wxOn = () => set.wx && window.WX && !window.WX.dead;
+FXS.enabled = set.wx;
 const persist = () => store.set('save', save), persistSet = () => store.set('set', set);
 TTS.setRate(set.rate); Sound.setSfx(set.sfx); Sound.setBgm(set.bgm);
 
@@ -96,7 +99,7 @@ const wait = (c, sel = '.go') => new Promise(res => { const b = c.querySelector(
 
 /* ───────── 화면 전환 ───────── */
 let screen = 'title', cur = null;
-function go(s) { if (s !== screen) fadeIn(); screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = s === 'mini' ? 'pad-run pad-mini' : 'pad-' + s; setTop(); }
+function go(s) { if (s !== screen) { fadeIn(); FXS.clear(); } screen = s; ov.innerHTML = ''; ov._k = null; pad.innerHTML = ''; pad.className = s === 'mini' ? 'pad-run pad-mini' : 'pad-' + s; setTop(); }
 /* 화면 바뀔 때 살짝 어둡게 → 밝게 (장면 전환) */
 let fadeEl = null;
 function fadeIn() {
@@ -272,6 +275,7 @@ function drawScene(theme, t, people) {
   THEME.layers.forEach(L => ctx.drawImage(L.c, 0, 0));
   for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
   if (people) drawCast(t, people);
+  if (wxOn()) { WX.set(theme); WX.draw(ctx, FDT, W, t / 1000 * 20); }
 }
 function arriveCast(t) {
   const cx = viewCX(), el2 = t - arriveT, mx = Math.min(cx - 24, -20 + el2 / 14);
@@ -482,7 +486,7 @@ function pauseRun() {
 }
 function hurt() {
   if (R.inv > 0) return false;
-  R.hearts--; R.inv = 1.3; R.hurtT = .5; R.stop = .09; shake(5, .3); Sound.sfx('hurt'); puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
+  R.hearts--; R.inv = 1.3; R.hurtT = .5; R.stop = .09; shake(5, .3); Sound.sfx('hurt'); if (!FXS.play('hit', PLAYER_X + 14, GY - R.y + 6)) puff(PLAYER_X + 10, GY - R.y - 15, '#ff8a7a'); updRunHud();
   if (R.hearts <= 0) { failRun(); return true; } return false;
 }
 function updateRun(dt) {
@@ -536,7 +540,7 @@ function updateRun(dt) {
       else if (o.bird) { const by = birdY(o); hit = rel < by + o.h - 1 && rel + ph > by + 1; }
       else hit = rel < o.h - 4;
       if (hit) {
-        if (R.bike > 0) { o.gone = true; puff(sx + o.w / 2, GY - base - o.h / 2, '#ffe08a'); Sound.sfx('smash'); continue; }
+        if (R.bike > 0) { o.gone = true; if (!FXS.play('poof', sx + o.w / 2, GY - base + 2)) puff(sx + o.w / 2, GY - base - o.h / 2, '#ffe08a'); Sound.sfx('smash'); continue; }
         if (hurt()) return;
       }
     } else if (o.k === 'clue') {
@@ -555,7 +559,7 @@ function updateRun(dt) {
 const birdY = o => 12 + 12 * (1 + Math.sin(R.t * 2.6 + o.ph));
 function collectClue(o) {
   const c = R.cs.clues[o.ci]; R.got.push(o.ci); delete save.weakClue[R.cs.no + ':' + o.ci]; persist();
-  Sound.sfx('clue'); speak(c[0]); puff(PLAYER_X + 12, GY - R.y - 20, '#ffe08a');
+  Sound.sfx('clue'); speak(c[0]); if (!FXS.play('clue', PLAYER_X + 12, GY - R.y + 22)) puff(PLAYER_X + 12, GY - R.y - 20, '#ffe08a');
   msg(`🔍 <b>${esc(c[0])}</b>${set.py ? ` <span>${esc(c[1])}</span>` : ''}${set.ko ? ` · ${esc(c[2])}` : ''}${c[3] ? ` <i>HSK${c[3]}</i>` : ''}`, 'clue', 1700);
   updRunHud();
 }
@@ -643,7 +647,8 @@ function drawRun(t) {
   }
   if (!R.ground) { const G = Math.max(0, surf(footX()).g); PX.ellipse(ctx, PLAYER_X + 12, GY - G + 2, Math.max(3, 8 - (R.y - G) / 12), 1, 'rgba(0,0,0,.18)'); }
   R.fx.forEach(f => PX.R(ctx, f.x, f.y, 2, 2, f.col));
-  if (R.snow.length) R.snow.forEach(s => { s[0] -= (20 + s[2] * 20) * .016 + (R.bike > 0 ? 3 : 1); s[1] += s[2] * .6; if (s[1] > H) s[1] = 0; if (s[0] < 0) s[0] += W + 40; PX.R(ctx, s[0], s[1], s[2] > 1 ? 2 : 1, s[2] > 1 ? 2 : 1, '#ffffff'); });
+  if (wxOn() && WX.draw(ctx, FDT, W, R.dist, 6, .75)) { /* pixelfx 날씨 */ }
+  else if (R.snow.length) R.snow.forEach(s => { s[0] -= (20 + s[2] * 20) * .016 + (R.bike > 0 ? 3 : 1); s[1] += s[2] * .6; if (s[1] > H) s[1] = 0; if (s[0] < 0) s[0] += W + 40; PX.R(ctx, s[0], s[1], s[2] > 1 ? 2 : 1, s[2] > 1 ? 2 : 1, '#ffffff'); });
 }
 
 /* ───────── 🪜 결승 탑: 덩어리 사다리 ───────── */
@@ -717,7 +722,7 @@ function drawLadder(t) {
   if (LD.cheer) for (let i = 0; i < 12; i++) { const a = t / 300 + i; PX.R(ctx, W / 2 + Math.cos(a) * (20 + i * 3), 40 + Math.sin(a * 1.3) * 20 + i * 2, 2, 2, ['#e2504c', '#ffd36e', '#7fd6a8', '#7fb2ec'][i % 4]); }
 }
 async function ladderTop() {
-  LD.cheer = 1; Sound.bgm('win'); Sound.sfx('cheer');
+  LD.cheer = 1; Sound.bgm('win'); Sound.sfx('cheer'); FXS.play('confetti', viewCX(), GY - 8); FXS.play('confetti', viewCX() + 40, GY - 8, { delay: .5, flip: true });
   const last = LD.cs.ladder[5].t.join('');
   pad.innerHTML = `<div class="panel center"><div class="ptitle">🏆 꼭대기에서 사건의 진실을 외쳐요!</div>${zhBlock(last, '', LD.cs.ladder[5].ko)}<button class="big go">🔊 다 같이 외치기</button></div>`;
   speak(last);
@@ -953,6 +958,7 @@ function openMenu() {
     <div class="setrow">읽기 빠르기 <button class="btn" data-k="rate">${set.rate < .8 ? '느리게' : set.rate > .9 ? '빠르게' : '보통'}</button></div>
     <div class="setrow">효과음 <button class="btn" data-k="sfx">${set.sfx ? '켜짐' : '꺼짐'}</button></div>
     <div class="setrow">배경음악 <button class="btn" data-k="bgm">${set.bgm ? '켜짐' : '꺼짐'}</button></div>
+    <div class="setrow">날씨·반짝 효과 <button class="btn" data-k="wx">${set.wx ? '켜짐' : '꺼짐'}</button></div>
     <div class="setrow">선생님용: 모든 사건 열기 <button class="btn" data-k="unlock">${save.unlockAll ? '열림' : '코드 입력'}</button></div>
     <div class="setrow">내 탐정 모습 <span>${lookPicker()}</span></div>
     <div class="setrow">처음부터 다시 <button class="btn" data-k="reset">초기화</button></div>
@@ -967,6 +973,7 @@ function openMenu() {
     else if (k === 'sfx') { set.sfx = !set.sfx; Sound.setSfx(set.sfx); }
     else if (k === 'bgm') { set.bgm = !set.bgm; Sound.setBgm(set.bgm); }
     else set[k] = !set[k];
+    FXS.enabled = set.wx;
     persistSet(); c.close(); openMenu();
   });
   c.querySelector('.go').onclick = () => { c.close(); if (R && screen === 'run') R.paused = false; if (screen === 'map') mapPad(); };
@@ -978,7 +985,7 @@ function loop(now) {
   try {
   const shk = SHKT > 0; if (shk) { SHKT -= .016; ctx.save(); ctx.translate(Math.round((Math.random() - .5) * SHK), Math.round((Math.random() - .5) * SHK)); if (SHKT <= 0) SHK = 0; }
   if (now - (loop._fk || 0) > 600) { loop._fk = now; const a = document.getElementById('app'); if (a.clientWidth + 'x' + a.clientHeight + '@' + (window.devicePixelRatio || 1) !== fitKey) { fit(); if (LD) LD.scene = ART.towerScene(LD.cs.theme, W, viewCX()); ov._k = null; } }
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const dt = Math.min(.05, (now - last) / 1000); last = now; FDT = dt;
   if (screen === 'title') { titleT += dt; if (!THEME || THEME.name !== '重庆') { THEME = ART.THEMES.cq(); skyC = null; } drawTitle(now, titleT * 60); }
   else if (screen === 'map') drawMap(now);
   else if (screen === 'office') drawOffice(now);
@@ -987,6 +994,7 @@ function loop(now) {
   else if (screen === 'mini') { MINI.update(dt); MINI.draw(now); }
   else if (screen === 'ladder' && LD) { updateLadder(dt); drawLadder(now); }
   else if (screen === 'check') drawCheck(now);
+  if (set.wx) FXS.draw(ctx, dt);
   if (shk) ctx.restore();
   } catch (e) { console.error(e); }
   requestAnimationFrame(loop);

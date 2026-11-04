@@ -1,0 +1,18 @@
+{
+  "_comment": "도시 탐정 런에서 쓰는 pixelfx 이펙트. key = 게임 안 이름, id = pixelfx 이펙트(category/name). 수정 후 node tools/pixelfx/export.mjs",
+  "outDir": "assets/fx",
+  "effects": [
+    { "key": "clue", "id": "pickups/collect-burst", "fps": 15,
+      "options": { "palette": ["#3a2410", "#7a4a18", "#b8741e", "#e8a83a", "#ffd25a", "#ffe9a0", "#fff6d8", "#ffffff"] },
+      "use": "단서 돋보기 먹기" },
+    { "key": "hit", "id": "impacts/blunt-hit", "fps": 15, "options": {}, "use": "장애물에 부딪힘" },
+    { "key": "poof", "id": "spawn/poof", "fps": 15,
+      "options": { "stars": ["#ffcd75", "#fff3a6", "#ffffff"] }, "use": "자전거로 장애물 부수기·오답 상자" },
+    { "key": "pow", "id": "explosions/cartoon-pow", "fps": 15, "options": {}, "use": "두더지(무음단) 잡기" },
+    { "key": "spark", "id": "impacts/hit-spark", "fps": 15, "options": {}, "use": "미니게임 정답 짧은 불꽃" },
+    { "key": "star", "id": "pickups/collect-burst", "fps": 15, "seed": 3,
+      "options": { "palette": ["#10283a", "#1d5a78", "#2a8ab0", "#41a6f6", "#73eff7", "#b8f8ff", "#e8ffff", "#ffffff"] },
+      "use": "미니게임 정답" },
+    { "key": "confetti", "id": "ui/confetti", "fps": 15, "options": {}, "use": "사건 해결·결승선" }
+  ]
+}
