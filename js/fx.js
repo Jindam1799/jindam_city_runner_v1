@@ -11,7 +11,11 @@ const FXS = (() => {
     for (const [k, e] of Object.entries(m.effects || {})) {
       fetch(BASE + e.json + '?v=' + (window.APP_V || '')).then(r => r.json()).then(j => {
         const img = new Image();
-        img.onload = () => { SHEETS[k] = { img, fr: j.frames.map(f => f.frame), fps: e.fps, pv: e.pivot, loop: e.loop }; };
+        img.onload = () => {
+          const put = im => { SHEETS[k] = { img: im, fr: j.frames.map(f => f.frame), fps: e.fps, pv: e.pivot, loop: e.loop }; };
+          // 미리 풀어 두기: 처음 터질 때 그림을 푸느라 멈칫하지 않게
+          if (window.createImageBitmap) createImageBitmap(img).then(put, () => put(img)); else put(img);
+        };
         img.src = BASE + e.png + '?v=' + (window.APP_V || '');
       }).catch(() => {});
     }

@@ -1,6 +1,6 @@
 /* 진담 도시 탐정 런 — 게임 본체 (교재 1권 「중국 도시 미스터리 파일」 과제용)
    지도 → 편지(수상한 질문) → 친구 대화 → 달리기(단서 10개 · 덩어리 관문 · 공유 자전거) → 결승 탑 덩어리 사다리 → 사건 해결 · 과제 확인증 */
-const APP_VERSION = 'v0.16.0 (2026.11.04)';
+const APP_VERSION = 'v0.16.1 (2026.11.05)';
 const KEY = 'jcr1-';
 const H = ART.H, GY = ART.GY;
 
@@ -14,7 +14,7 @@ const store = {
 let save = Object.assign(newSave(), store.get('save', {}) || {});
 const set = Object.assign({ py: true, ko: true, rate: .85, sfx: true, bgm: true, wx: true }, store.get('set', {}));
 let FDT = .016;   // 이번 프레임 시간 (날씨·이펙트용)
-const wxOn = () => set.wx && window.WX && !window.WX.dead;
+const wxOn = () => set.wx && window.WX;
 FXS.enabled = set.wx;
 const persist = () => store.set('save', save), persistSet = () => store.set('set', set);
 TTS.setRate(set.rate); Sound.setSfx(set.sfx); Sound.setBgm(set.bgm);
@@ -275,7 +275,7 @@ function drawScene(theme, t, people) {
   THEME.layers.forEach(L => ctx.drawImage(L.c, 0, 0));
   for (let x = 0; x < W; x += ART.LW) ctx.drawImage(THEME.ground, x, GY);
   if (people) drawCast(t, people);
-  if (wxOn()) { WX.set(theme); WX.draw(ctx, FDT, W, t / 1000 * 20); }
+  if (wxOn()) { WX.set(theme); WX.bake(6); WX.draw(ctx, FDT, W, t / 1000 * 20); }   // 글 읽는 동안 날씨를 미리 구워 둬요
 }
 function arriveCast(t) {
   const cx = viewCX(), el2 = t - arriveT, mx = Math.min(cx - 24, -20 + el2 / 14);
